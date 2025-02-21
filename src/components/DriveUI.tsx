@@ -1,31 +1,68 @@
 'use client';
 
-import { useState } from 'react';
-import { type DriveItem, mockDriveData } from '~/lib/mock-data';
+import { useEffect, useState } from 'react';
 import { Button } from '~/components/ui/button';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '~/components/ui/table';
 import { Upload } from 'lucide-react';
 
+interface DriveItem {
+  id: string;
+  name: string;
+  type: 'file' | 'folder';
+  size?: string;
+  modifiedAt: string;
+}
+
 export function DriveUI() {
   const [currentFolder, setCurrentFolder] = useState<string>('root');
+  const [items, setItems] = useState<DriveItem[]>([]);
+  const [path, setPath] = useState<DriveItem[]>([{ id: 'root', name: 'My Drive', type: 'folder', modifiedAt: '' }]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const getCurrentItems = () => {
-    return mockDriveData.filter(item => item.parentId === currentFolder);
+  const fetchFiles = async (folderId: string) => {
+    try {
+      const response = await fetch(`/api/google?folderId=${folderId}`);
+      const data = await response.json();
+      
+      if (data.url) {
+        // Need to authenticate
+        window.location.href = data.url;
+        return;
+      }
+
+      setItems(data.files);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching files:', error);
+      setIsLoading(false);
+    }
   };
 
-  const getCurrentPath = () => {
-    const path: DriveItem[] = [];
-    let current = mockDriveData.find(item => item.id === currentFolder);
-    while (current) {
-      path.unshift(current);
-      current = mockDriveData.find(item => item.id === current.parentId);
-    }
-    return path;
+  useEffect(() => {
+    fetchFiles(currentFolder);
+  }, [currentFolder]);
+
+  const handleFolderClick = async (item: DriveItem) => {
+    setCurrentFolder(item.id);
+    setPath(prev => [...prev, item]);
+  };
+
+  const handlePathClick = (item: DriveItem, index: number) => {
+    setCurrentFolder(item.id);
+    setPath(prev => prev.slice(0, index + 1));
   };
 
   const handleUpload = () => {
     alert('Upload functionality would go here!');
   };
+
+  if (isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col">
@@ -41,13 +78,13 @@ export function DriveUI() {
 
         {/* Breadcrumb */}
         <div className="max-w-6xl mx-auto flex items-center gap-2 mb-6 h-8">
-          {getCurrentPath().map((item, index) => (
+          {path.map((item, index) => (
             <div key={item.id} className="flex items-center">
               {index > 0 && <span className="mx-2 text-muted-foreground">/</span>}
               <Button
                 variant="link"
                 className="p-0 h-auto"
-                onClick={() => setCurrentFolder(item.id)}
+                onClick={() => handlePathClick(item, index)}
               >
                 {item.name}
               </Button>
@@ -68,7 +105,7 @@ export function DriveUI() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {getCurrentItems().map((item) => (
+              {items.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -76,14 +113,14 @@ export function DriveUI() {
                         <Button
                           variant="ghost"
                           className="p-0 h-auto"
-                          onClick={() => setCurrentFolder(item.id)}
+                          onClick={() => handleFolderClick(item)}
                         >
                           <span className="text-lg mr-2">📁</span>
                           <span className="hover:underline">{item.name}</span>
                         </Button>
                       ) : (
                         <Button variant="ghost" className="p-0 h-auto" asChild>
-                          <a href="#">
+                          <a href={`https://drive.google.com/file/d/${item.id}/view`} target="_blank" rel="noopener noreferrer">
                             <span className="text-lg mr-2">📄</span>
                             <span className="hover:underline">{item.name}</span>
                           </a>
