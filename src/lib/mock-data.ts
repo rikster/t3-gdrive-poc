@@ -9,13 +9,6 @@ export interface DriveItem {
 
 export const mockDriveData: DriveItem[] = [
   {
-    id: 'root',
-    name: 'My Drive',
-    type: 'folder',
-    modifiedAt: '2025-02-21',
-    parentId: null,
-  },
-  {
     id: 'folder1',
     name: 'Documents',
     type: 'folder',

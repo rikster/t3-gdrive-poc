@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '~/components/ui/button';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '~/components/ui/table';
-import { Upload } from 'lucide-react';
+import { Upload, FileIcon, FolderIcon } from 'lucide-react';
 
 interface DriveItem {
   id: string;
@@ -11,19 +11,48 @@ interface DriveItem {
   type: 'file' | 'folder';
   size?: string;
   modifiedAt: string;
+  parentId: string | null;
 }
 
-export function DriveUI() {
+interface DriveUIProps {
+  items?: DriveItem[];
+  loading?: boolean;
+  error?: string | null;
+}
+
+export function DriveUI({ items: initialItems, loading: initialLoading, error: initialError }: DriveUIProps = {}) {
   const [currentFolder, setCurrentFolder] = useState<string>('root');
-  const [items, setItems] = useState<DriveItem[]>([]);
-  const [path, setPath] = useState<DriveItem[]>([{ id: 'root', name: 'My Drive', type: 'folder', modifiedAt: '' }]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [items, setItems] = useState<DriveItem[]>(initialItems || []);
+  const [path, setPath] = useState<DriveItem[]>([{ id: 'root', name: 'My Drives', type: 'folder', modifiedAt: '' }]);
+  const [isLoading, setIsLoading] = useState(initialLoading ?? true);
+  const [error, setError] = useState<string | null>(initialError ?? null);
+
+  useEffect(() => {
+    if (initialItems) {
+      setItems(initialItems);
+    }
+  }, [initialItems]);
+
+  useEffect(() => {
+    if (initialLoading !== undefined) {
+      setIsLoading(initialLoading);
+    }
+  }, [initialLoading]);
+
+  useEffect(() => {
+    if (initialError !== undefined) {
+      setError(initialError);
+    }
+  }, [initialError]);
 
   const fetchFiles = async (folderId: string) => {
+    if (initialItems) return; // Don't fetch if we're using props
+
     try {
+      setIsLoading(true);
       const response = await fetch(`/api/google?folderId=${folderId}`);
       const data = await response.json();
-      
+
       if (data.url) {
         // Need to authenticate
         window.location.href = data.url;
@@ -31,9 +60,11 @@ export function DriveUI() {
       }
 
       setItems(data.files);
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error fetching files:', error);
+      setError(null);
+    } catch (err) {
+      setError('Failed to fetch files');
+      setItems([]);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -64,76 +95,92 @@ export function DriveUI() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <p className="text-lg text-red-500">{error}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col">
-      <div className="flex-none p-6">
+      <div className="flex-none p-4 sm:p-6">
         {/* Header */}
-        <div className="max-w-6xl mx-auto flex justify-between items-center mb-6">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-6">
           <h1 className="text-2xl font-bold">StrataFusion</h1>
-          <Button onClick={handleUpload}>
+          <Button onClick={handleUpload} className="w-full sm:w-auto">
             <Upload className="mr-2 h-4 w-4" />
             Upload
           </Button>
         </div>
 
         {/* Breadcrumb */}
-        <div className="max-w-6xl mx-auto flex items-center gap-2 mb-6 h-8">
-          {path.map((item, index) => (
-            <div key={item.id} className="flex items-center">
-              {index > 0 && <span className="mx-2 text-muted-foreground">/</span>}
-              <Button
-                variant="link"
-                className="p-0 h-auto"
-                onClick={() => handlePathClick(item, index)}
-              >
-                {item.name}
-              </Button>
-            </div>
-          ))}
+        <div className="max-w-6xl mx-auto overflow-x-auto">
+          <div className="flex items-center gap-2 mb-6 h-8 min-w-max">
+            {path.map((item, index) => (
+              <div key={item.id} className="flex items-center">
+                {index > 0 && <span className="mx-2 text-muted-foreground">/</span>}
+                <Button
+                  variant="link"
+                  className="p-0 h-auto"
+                  onClick={() => handlePathClick(item, index)}
+                >
+                  {item.name}
+                </Button>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* File List */}
-      <div className="flex-1 overflow-auto px-6 pb-6">
+      <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
         <div className="max-w-6xl mx-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50%] bg-background sticky top-0">Name</TableHead>
-                <TableHead className="w-[25%] bg-background sticky top-0">Modified</TableHead>
-                <TableHead className="w-[25%] bg-background sticky top-0">Size</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {item.type === 'folder' ? (
-                        <Button
-                          variant="ghost"
-                          className="p-0 h-auto"
-                          onClick={() => handleFolderClick(item)}
-                        >
-                          <span className="text-lg mr-2">📁</span>
-                          <span className="hover:underline">{item.name}</span>
-                        </Button>
-                      ) : (
-                        <Button variant="ghost" className="p-0 h-auto" asChild>
-                          <a href={`https://drive.google.com/file/d/${item.id}/view`} target="_blank" rel="noopener noreferrer">
-                            <span className="text-lg mr-2">📄</span>
-                            <span className="hover:underline">{item.name}</span>
-                          </a>
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{item.modifiedAt}</TableCell>
-                  <TableCell className="text-muted-foreground">{item.size || '--'}</TableCell>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50%] bg-background sticky top-0">Name</TableHead>
+                  <TableHead className="w-[25%] bg-background sticky top-0 text-right">Modified</TableHead>
+                  <TableHead className="w-[25%] bg-background sticky top-0 text-right">Size</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {items.map((item) => (
+                  <TableRow key={item.id} className="group">
+                    <TableCell className="py-3">
+                      <div className="flex items-start gap-2 min-h-[32px] w-full">
+                        {item.type === 'folder' ? (
+                          <Button
+                            variant="ghost"
+                            className="p-0 h-auto flex items-start justify-start text-left w-full"
+                            onClick={() => handleFolderClick(item)}
+                          >
+                            <FolderIcon className="h-5 w-5 mr-2 flex-shrink-0 text-blue-500 mt-1" />
+                            <span className="hover:underline whitespace-normal break-words">{item.name}</span>
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" className="p-0 h-auto flex items-start justify-start text-left w-full" asChild>
+                            <a href={`https://drive.google.com/file/d/${item.id}/view`} target="_blank" rel="noopener noreferrer" className="w-full">
+                              <FileIcon className="h-5 w-5 mr-2 flex-shrink-0 text-gray-500 mt-1" />
+                              <span className="hover:underline whitespace-normal break-words">{item.name}</span>
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-right align-top py-3">
+                      {item.modifiedAt}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-right align-top py-3">
+                      {item.size || '--'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
     </div>

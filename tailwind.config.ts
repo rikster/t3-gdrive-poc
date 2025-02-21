@@ -2,11 +2,15 @@ import { type Config } from "tailwindcss";
 import { fontFamily } from "tailwindcss/defaultTheme";
 
 export default {
-  content: ["./src/**/*.tsx"],
+  content: [
+    "./src/**/*.tsx",
+    "./.storybook/preview.ts",
+    "./src/**/*.stories.tsx"
+  ],
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-geist-sans)", ...fontFamily.sans],
+        sans: ["Geist Sans", ...fontFamily.sans],
       },
     },
   },
