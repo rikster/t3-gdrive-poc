@@ -44,7 +44,8 @@ export async function GET(request: NextRequest) {
     // Store tokens for future use
     storeTokens(tokens);
 
-    return await listFiles(searchParams.get('folderId'));
+    // Redirect to main page after successful authentication
+    return Response.redirect(new URL('/', request.url));
   } catch (error) {
     console.error('Error:', error);
     return Response.json({ error: 'Failed to fetch files' }, { status: 500 });
