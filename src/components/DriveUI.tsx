@@ -23,7 +23,10 @@ interface DriveUIProps {
 export function DriveUI({ items: initialItems, loading: initialLoading, error: initialError }: DriveUIProps = {}) {
   const [currentFolder, setCurrentFolder] = useState<string>('root');
   const [items, setItems] = useState<DriveItem[]>(initialItems || []);
-  const [path, setPath] = useState<DriveItem[]>([{ id: 'root', name: 'My Drives', type: 'folder', modifiedAt: '' }]);
+  const [path, setPath] = useState<DriveItem[]>([{
+    id: 'root', name: 'My Drives', type: 'folder', modifiedAt: '',
+    parentId: null
+  }]);
   const [isLoading, setIsLoading] = useState(initialLoading ?? true);
   const [error, setError] = useState<string | null>(initialError ?? null);
 
