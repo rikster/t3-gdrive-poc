@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '~/components/ui/button';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '~/components/ui/table';
 import { Upload, FileIcon, FolderIcon } from 'lucide-react';
+import { ThemeToggle } from './theme/ThemeToggle';
 
 interface DriveItem {
   id: string;
@@ -93,7 +94,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
   if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"></div>
       </div>
     );
   }
@@ -107,15 +108,25 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
   }
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col bg-white dark:bg-gray-950 text-black dark:text-white">
       <div className="flex-none p-4 sm:p-6">
         {/* Header */}
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-6">
-          <h1 className="text-2xl font-bold">StrataFusion</h1>
-          <Button onClick={handleUpload} className="w-full sm:w-auto">
-            <Upload className="mr-2 h-4 w-4" />
-            Upload
-          </Button>
+          <div className="flex items-center justify-between w-full sm:w-auto">
+            <h1 className="text-2xl font-bold">StrataFusion</h1>
+            <div className="sm:hidden">
+              <ThemeToggle />
+            </div>
+          </div>
+          <div className="flex items-center gap-4 w-full sm:w-auto">
+            <div className="hidden sm:block">
+              <ThemeToggle />
+            </div>
+            <Button onClick={handleUpload} className="w-full sm:w-auto">
+              <Upload className="mr-2 h-4 w-4" />
+              Upload
+            </Button>
+          </div>
         </div>
 
         {/* Breadcrumb */}
@@ -140,18 +151,18 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
       {/* File List */}
       <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
         <div className="max-w-6xl mx-auto">
-          <div className="rounded-md border">
+          <div className="rounded-md border border-gray-200 dark:border-gray-800">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50%] bg-background sticky top-0">Name</TableHead>
-                  <TableHead className="w-[25%] bg-background sticky top-0 text-right">Modified</TableHead>
-                  <TableHead className="w-[25%] bg-background sticky top-0 text-right">Size</TableHead>
+                <TableRow className="hover:bg-gray-100 dark:hover:bg-gray-800">
+                  <TableHead className="w-[50%] bg-gray-50 dark:bg-gray-900 sticky top-0">Name</TableHead>
+                  <TableHead className="w-[25%] bg-gray-50 dark:bg-gray-900 sticky top-0 text-right">Modified</TableHead>
+                  <TableHead className="w-[25%] bg-gray-50 dark:bg-gray-900 sticky top-0 text-right">Size</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {items.map((item) => (
-                  <TableRow key={item.id} className="group">
+                  <TableRow key={item.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800">
                     <TableCell className="py-3">
                       <div className="flex items-start gap-2 min-h-[32px] w-full">
                         {item.type === 'folder' ? (
@@ -166,7 +177,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                         ) : (
                           <Button variant="ghost" className="p-0 h-auto flex items-start justify-start text-left w-full" asChild>
                             <a href={`https://drive.google.com/file/d/${item.id}/view`} target="_blank" rel="noopener noreferrer" className="w-full">
-                              <FileIcon className="h-5 w-5 mr-2 flex-shrink-0 text-gray-500 mt-1" />
+                              <FileIcon className="h-5 w-5 mr-2 flex-shrink-0 text-gray-500 dark:text-gray-400 mt-1" />
                               <span className="hover:underline whitespace-normal break-words">{item.name}</span>
                             </a>
                           </Button>

@@ -7,6 +7,7 @@ export default {
     "./.storybook/preview.ts",
     "./src/**/*.stories.tsx"
   ],
+  darkMode: "class",
   theme: {
     extend: {
       fontFamily: {
