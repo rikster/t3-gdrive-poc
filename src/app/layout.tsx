@@ -3,6 +3,7 @@ import "~/styles/globals.css";
 import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { DriveProvider } from "~/contexts/DriveContext";
 
 export const metadata: Metadata = {
   title: "Create T3 App",
@@ -17,7 +18,9 @@ export default function RootLayout({
     <html lang="en" className={`${GeistSans.variable}`} suppressHydrationWarning>
       <body>
         <ThemeProvider defaultTheme="system" storageKey="ui-theme">
-          {children}
+          <DriveProvider>
+            {children}
+          </DriveProvider>
         </ThemeProvider>
       </body>
     </html>
