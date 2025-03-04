@@ -6,10 +6,10 @@ export async function POST(request: NextRequest) {
   const service = searchParams.get('service');
   
   if (service === 'google' || service === 'onedrive') {
-    clearTokens(service);
+    await clearTokens(service);
   } else {
     // No specific service mentioned, clear all tokens
-    clearTokens();
+    await clearTokens();
   }
   
   return Response.json({ success: true });

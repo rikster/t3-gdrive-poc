@@ -17,7 +17,7 @@ const SCOPES = [
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get('code');
-  const storedTokens = getStoredTokens('onedrive');
+  const storedTokens = await getStoredTokens('onedrive');
   const folderId = searchParams.get('folderId') || 'root';
 
   // If we have stored tokens, use them
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     };
     
     // Store tokens for future use
-    storeTokens(tokens, 'onedrive');
+    await storeTokens(tokens, 'onedrive');
 
     // Redirect to main page after successful authentication
     return Response.redirect(new URL('/', request.url));
@@ -94,12 +94,26 @@ async function listFiles(tokens: any, folderId: string) {
       endpoint = `/me/drive/items/${folderId}/children`;
     }
 
+    // The Microsoft Graph API requires a different orderby format than the one we were using
     const response = await client.api(endpoint)
       .select('id,name,folder,file,size,lastModifiedDateTime')
-      .orderby('folder desc,name')
+      .orderby('name asc')  // Using a single value primitive type
       .get();
 
-    const files = response.value.map((item: any) => ({
+    // Ensure response.value exists, if not, return an empty array
+    const items = response.value || [];
+    
+    // Sort folders first, then files (since we can't use folder in orderby)
+    const sortedItems = items.sort((a: any, b: any) => {
+      // If a is a folder and b is not, a comes first
+      if (a.folder && !b.folder) return -1;
+      // If b is a folder and a is not, b comes first
+      if (!a.folder && b.folder) return 1;
+      // Otherwise, sort by name
+      return a.name.localeCompare(b.name);
+    });
+    
+    const files = sortedItems.map((item: any) => ({
       id: item.id,
       name: item.name,
       type: item.folder ? 'folder' : 'file',
@@ -111,6 +125,7 @@ async function listFiles(tokens: any, folderId: string) {
     return Response.json({ files });
   } catch (error) {
     console.error('Error listing OneDrive files:', error);
-    return Response.json({ error: 'Failed to list OneDrive files' }, { status: 500 });
+    // Even on error, return an empty files array rather than undefined
+    return Response.json({ files: [], error: 'Failed to list OneDrive files' }, { status: 500 });
   }
 }

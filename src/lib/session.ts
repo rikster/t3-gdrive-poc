@@ -10,9 +10,9 @@ export interface TokenData {
 
 export type ServiceType = 'google' | 'onedrive';
 
-export function getStoredTokens(service: ServiceType = 'google'): TokenData | null {
+export async function getStoredTokens(service: ServiceType = 'google'): Promise<TokenData | null> {
   const cookieStore = cookies();
-  const tokenCookie = cookieStore.get(`${service}_tokens`);
+  const tokenCookie = await cookieStore.get(`${service}_tokens`);
   if (!tokenCookie) return null;
   
   try {
@@ -22,9 +22,9 @@ export function getStoredTokens(service: ServiceType = 'google'): TokenData | nu
   }
 }
 
-export function storeTokens(tokens: TokenData, service: ServiceType = 'google'): void {
+export async function storeTokens(tokens: TokenData, service: ServiceType = 'google'): Promise<void> {
   const cookieStore = cookies();
-  cookieStore.set(`${service}_tokens`, JSON.stringify(tokens), {
+  await cookieStore.set(`${service}_tokens`, JSON.stringify(tokens), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
@@ -32,25 +32,28 @@ export function storeTokens(tokens: TokenData, service: ServiceType = 'google'):
   });
 }
 
-export function getActiveService(): ServiceType | null {
+export async function getActiveService(): Promise<ServiceType | null> {
   const cookieStore = cookies();
   
   // Check if any service tokens exist
-  if (cookieStore.get('google_tokens')) return 'google';
-  if (cookieStore.get('onedrive_tokens')) return 'onedrive';
+  const googleTokens = await cookieStore.get('google_tokens');
+  const onedriveTokens = await cookieStore.get('onedrive_tokens');
+  
+  if (googleTokens) return 'google';
+  if (onedriveTokens) return 'onedrive';
   
   return null;
 }
 
-export function clearTokens(service?: ServiceType): void {
+export async function clearTokens(service?: ServiceType): Promise<void> {
   const cookieStore = cookies();
   
   if (!service) {
     // Clear all service tokens
-    cookieStore.delete('google_tokens');
-    cookieStore.delete('onedrive_tokens');
+    await cookieStore.delete('google_tokens');
+    await cookieStore.delete('onedrive_tokens');
   } else {
     // Clear only specified service token
-    cookieStore.delete(`${service}_tokens`);
+    await cookieStore.delete(`${service}_tokens`);
   }
 }

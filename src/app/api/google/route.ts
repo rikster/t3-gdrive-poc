@@ -14,7 +14,7 @@ const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get('code');
-  const storedTokens = getStoredTokens();
+  const storedTokens = await getStoredTokens('google');
 
   // If we have stored tokens, use them
   if (storedTokens && !code) {
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     oauth2Client.setCredentials(tokens);
     
     // Store tokens for future use
-    storeTokens(tokens);
+    await storeTokens(tokens, 'google');
 
     // Redirect to main page after successful authentication
     return Response.redirect(new URL('/', request.url));
