@@ -66,8 +66,14 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
         return;
       }
 
-      setItems(data.files);
-      setError(null);
+      // Ensure data.files is always an array
+      setItems(Array.isArray(data.files) ? data.files : []);
+      
+      if (data.error) {
+        setError(data.error);
+      } else {
+        setError(null);
+      }
     } catch (err) {
       setError(`Failed to fetch files from ${currentService}`);
       setItems([]);
@@ -109,6 +115,9 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
   if (isLoading || isAuthenticating) {
     return renderSpinner();
   }
+
+  // Ensure items is always an array
+  const safeItems = Array.isArray(items) ? items : [];
 
   return (
     <div className="h-screen flex flex-col bg-white dark:bg-gray-950 text-black dark:text-white">
@@ -182,6 +191,11 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
       <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
         {isAuthenticated ? (
           <div className="max-w-6xl mx-auto">
+            {error && (
+              <div className="mb-4 p-4 rounded-md bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400">
+                {error}
+              </div>
+            )}
             <div className="rounded-md border border-gray-200 dark:border-gray-800">
               <Table>
                 <TableHeader>
@@ -192,14 +206,14 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {items.length === 0 ? (
+                  {safeItems.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={3} className="text-center py-8">
                         No files found in this folder
                       </TableCell>
                     </TableRow>
                   ) : (
-                    items.map((item) => (
+                    safeItems.map((item) => (
                       <TableRow key={item.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800">
                         <TableCell className="py-3">
                           <div className="flex items-start gap-2 min-h-[32px] w-full">
