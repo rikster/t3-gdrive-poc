@@ -1,12 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { ServiceType } from '~/lib/session';
 
 export interface DriveContextType {
   isAuthenticated: boolean;
   authenticateService: (serviceId: string) => void;
+  disconnectService: (serviceId: string) => void;
   logout: () => void;
   currentService: string | null;
+  activeServices: string[];
   isAuthenticating: boolean;
 }
 
@@ -15,6 +18,7 @@ const DriveContext = createContext<DriveContextType | undefined>(undefined);
 export function DriveProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentService, setCurrentService] = useState<string | null>(null);
+  const [activeServices, setActiveServices] = useState<string[]>([]);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   // Check if we have stored tokens (done on client side to prevent hydration issues)
@@ -24,8 +28,14 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         const response = await fetch('/api/auth/status');
         const data = await response.json();
         setIsAuthenticated(data.isAuthenticated);
-        if (data.service) {
-          setCurrentService(data.service);
+        
+        if (data.activeServices && Array.isArray(data.activeServices)) {
+          setActiveServices(data.activeServices);
+          
+          // Set current service to the first active service if not already set
+          if (data.activeServices.length > 0 && !currentService) {
+            setCurrentService(data.activeServices[0]);
+          }
         }
       } catch (error) {
         console.error('Failed to check auth status:', error);
@@ -34,7 +44,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     };
 
     checkAuthStatus();
-  }, []);
+  }, [currentService]);
 
   const authenticateService = async (serviceId: string) => {
     setIsAuthenticating(true);
@@ -57,16 +67,34 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const disconnectService = async (serviceId: string) => {
+    if (!activeServices.includes(serviceId)) return;
+    
+    try {
+      await fetch(`/api/auth/logout?service=${serviceId}`, { method: 'POST' });
+      
+      // Update active services
+      const updatedServices = activeServices.filter(s => s !== serviceId);
+      setActiveServices(updatedServices);
+      
+      // If we disconnected the current service, switch to another active service or null
+      if (serviceId === currentService) {
+        setCurrentService(updatedServices.length > 0 ? updatedServices[0] : null);
+      }
+      
+      // Update authentication status
+      setIsAuthenticated(updatedServices.length > 0);
+    } catch (error) {
+      console.error(`Failed to disconnect service ${serviceId}:`, error);
+    }
+  };
+
   const logout = async () => {
     try {
-      // Pass the current service as a query parameter if it exists
-      const url = currentService 
-        ? `/api/auth/logout?service=${currentService}` 
-        : '/api/auth/logout';
-      
-      await fetch(url, { method: 'POST' });
+      await fetch('/api/auth/logout', { method: 'POST' });
       setIsAuthenticated(false);
       setCurrentService(null);
+      setActiveServices([]);
     } catch (error) {
       console.error('Failed to logout:', error);
     }
@@ -75,9 +103,11 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   return (
     <DriveContext.Provider value={{ 
       isAuthenticated, 
-      authenticateService, 
+      authenticateService,
+      disconnectService,
       logout, 
       currentService,
+      activeServices,
       isAuthenticating 
     }}>
       {children}
