@@ -10,11 +10,11 @@ export interface TokenData {
 
 export type ServiceType = 'google' | 'onedrive';
 
+// Make sure to return the result directly without intermediate variables
 export async function getStoredTokens(service: ServiceType = 'google'): Promise<TokenData | null> {
-  const cookieStore = cookies();
-  const tokenCookie = await cookieStore.get(`${service}_tokens`);
+  const tokenCookie = await cookies().get(`${service}_tokens`);
   if (!tokenCookie) return null;
-  
+
   try {
     return JSON.parse(tokenCookie.value);
   } catch {
@@ -23,8 +23,7 @@ export async function getStoredTokens(service: ServiceType = 'google'): Promise<
 }
 
 export async function storeTokens(tokens: TokenData, service: ServiceType = 'google'): Promise<void> {
-  const cookieStore = cookies();
-  await cookieStore.set(`${service}_tokens`, JSON.stringify(tokens), {
+  await cookies().set(`${service}_tokens`, JSON.stringify(tokens), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
@@ -33,27 +32,36 @@ export async function storeTokens(tokens: TokenData, service: ServiceType = 'goo
 }
 
 export async function getActiveService(): Promise<ServiceType | null> {
-  const cookieStore = cookies();
-  
-  // Check if any service tokens exist
-  const googleTokens = await cookieStore.get('google_tokens');
-  const onedriveTokens = await cookieStore.get('onedrive_tokens');
-  
+  const googleTokens = await cookies().get('google_tokens');
+  const onedriveTokens = await cookies().get('onedrive_tokens');
+
   if (googleTokens) return 'google';
   if (onedriveTokens) return 'onedrive';
-  
+
   return null;
 }
 
 export async function clearTokens(service?: ServiceType): Promise<void> {
-  const cookieStore = cookies();
-  
   if (!service) {
     // Clear all service tokens
-    await cookieStore.delete('google_tokens');
-    await cookieStore.delete('onedrive_tokens');
+    await cookies().delete('google_tokens');
+    await cookies().delete('onedrive_tokens');
   } else {
     // Clear only specified service token
-    await cookieStore.delete(`${service}_tokens`);
+    await cookies().delete(`${service}_tokens`);
   }
+}
+
+export async function updateExpiryDate(
+  tokens: TokenData,
+  service: ServiceType = 'google'
+): Promise<void> {
+  // Set expiry date to current time + token_expires_in
+  const updatedTokens = {
+    ...tokens,
+    expiry_date: Date.now() + 3600 * 1000, // 1 hour from now
+  };
+
+  // Store updated tokens
+  await storeTokens(updatedTokens, service);
 }

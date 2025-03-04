@@ -1,12 +1,22 @@
 import { type NextRequest } from 'next/server';
-import { getStoredTokens, getActiveService } from '~/lib/session';
+import { cookies } from 'next/headers';
+import { type ServiceType } from '~/lib/session';
 
 export async function GET(request: NextRequest) {
-  const activeService = await getActiveService();
-  const tokens = activeService ? await getStoredTokens(activeService) : null;
+  // Directly check cookies here instead of using getActiveService
+  const cookieStore = cookies();
+  const googleTokens = cookieStore.get('google_tokens');
+  const onedriveTokens = cookieStore.get('onedrive_tokens');
+  
+  let activeService: ServiceType | null = null;
+  if (googleTokens) {
+    activeService = 'google';
+  } else if (onedriveTokens) {
+    activeService = 'onedrive';
+  }
   
   return Response.json({
-    isAuthenticated: !!tokens,
+    isAuthenticated: !!activeService,
     service: activeService
   });
 }
