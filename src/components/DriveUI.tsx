@@ -7,6 +7,12 @@ import { Upload, FileIcon, FolderIcon, LogOut } from 'lucide-react';
 import { ThemeToggle } from './theme/ThemeToggle';
 import { AddServiceButton } from './AddServiceButton';
 import { useDrive } from '~/contexts/DriveContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface DriveItem {
   id: string;
@@ -15,6 +21,7 @@ interface DriveItem {
   size?: string;
   modifiedAt: string;
   parentId: string | null;
+  service?: string; // Added to track which service the item comes from
 }
 
 interface DriveUIProps {
@@ -24,7 +31,16 @@ interface DriveUIProps {
 }
 
 export function DriveUI({ items: initialItems, loading: initialLoading, error: initialError }: DriveUIProps = {}) {
-  const { isAuthenticated, authenticateService, logout, currentService, isAuthenticating } = useDrive();
+  const { 
+    isAuthenticated, 
+    authenticateService, 
+    disconnectService, 
+    logout, 
+    currentService, 
+    activeServices, 
+    isAuthenticating 
+  } = useDrive();
+  
   const [currentFolder, setCurrentFolder] = useState<string>('root');
   const [items, setItems] = useState<DriveItem[]>(initialItems || []);
   const [path, setPath] = useState<DriveItem[]>([{
@@ -33,6 +49,9 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
   }]);
   const [isLoading, setIsLoading] = useState(initialLoading ?? false);
   const [error, setError] = useState<string | null>(initialError ?? null);
+  const [serviceItems, setServiceItems] = useState<Record<string, DriveItem[]>>({});
+  // Track which service the current folder belongs to (null means 'root' or 'all services')
+  const [currentFolderService, setCurrentFolderService] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialItems) {
@@ -52,30 +71,81 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
     }
   }, [initialError]);
 
-  const fetchFiles = async (folderId: string) => {
-    if (initialItems || !isAuthenticated || !currentService) return; // Don't fetch if we're using props or not authenticated
-
+  const fetchFilesFromService = async (service: string, folderId: string): Promise<DriveItem[]> => {
     try {
-      setIsLoading(true);
-      const response = await fetch(`/api/${currentService}?folderId=${folderId}`);
+      const response = await fetch(`/api/${service}?folderId=${folderId}`);
       const data = await response.json();
 
       if (data.url) {
         // Need to authenticate
         window.location.href = data.url;
-        return;
+        return [];
       }
 
-      // Ensure data.files is always an array
-      setItems(Array.isArray(data.files) ? data.files : []);
-      
       if (data.error) {
-        setError(data.error);
-      } else {
-        setError(null);
+        console.error(`Error fetching ${service} files:`, data.error);
+        return [];
       }
+
+      // Ensure data.files is always an array and add service property
+      const files = Array.isArray(data.files) 
+        ? data.files.map((file: DriveItem) => ({ ...file, service })) 
+        : [];
+      
+      return files;
     } catch (err) {
-      setError(`Failed to fetch files from ${currentService}`);
+      console.error(`Failed to fetch files from ${service}:`, err);
+      return [];
+    }
+  };
+
+  const fetchFiles = async (folderId: string) => {
+    if (initialItems || !isAuthenticated || activeServices.length === 0) {
+      return; // Don't fetch if we're using props or not authenticated
+    }
+
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      let allFiles: DriveItem[] = [];
+      
+      // If we're at root level or no specific service is set, fetch from all services
+      if (folderId === 'root' || !currentFolderService) {
+        const serviceResults: Record<string, DriveItem[]> = {};
+        const allFilesPromises = activeServices.map(async (service) => {
+          const files = await fetchFilesFromService(service, 'root');
+          serviceResults[service] = files;
+          return files;
+        });
+
+        const results = await Promise.all(allFilesPromises);
+        allFiles = results.flat();
+        
+        // Update state with all services' files
+        setServiceItems(serviceResults);
+        setCurrentFolderService(null); // At root, no specific service
+      } else {
+        // If we're in a specific folder, only fetch from that service
+        allFiles = await fetchFilesFromService(currentFolderService, folderId);
+        const serviceResults: Record<string, DriveItem[]> = {};
+        serviceResults[currentFolderService] = allFiles;
+        setServiceItems(serviceResults);
+      }
+      
+      // Combine all files and sort them (folders first, then alphabetically)
+      const sortedFiles = allFiles.sort((a, b) => {
+        // First sort by type (folders first)
+        if (a.type === 'folder' && b.type !== 'folder') return -1;
+        if (a.type !== 'folder' && b.type === 'folder') return 1;
+        
+        // Then sort alphabetically by name
+        return a.name.localeCompare(b.name);
+      });
+      
+      setItems(sortedFiles);
+    } catch (err) {
+      setError(`Failed to fetch files from one or more services`);
       setItems([]);
     } finally {
       setIsLoading(false);
@@ -86,14 +156,26 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
     if (isAuthenticated) {
       fetchFiles(currentFolder);
     }
-  }, [currentFolder, isAuthenticated, currentService]);
+  }, [currentFolder, isAuthenticated, activeServices]);
 
   const handleFolderClick = async (item: DriveItem) => {
+    // Update the current folder service when navigating into a folder
+    if (item.service) {
+      setCurrentFolderService(item.service);
+    }
+    
     setCurrentFolder(item.id);
     setPath(prev => [...prev, item]);
   };
 
   const handlePathClick = (item: DriveItem, index: number) => {
+    // Reset service context if navigating to root
+    if (index === 0) {
+      setCurrentFolderService(null);
+    } else if (item.service) {
+      setCurrentFolderService(item.service);
+    }
+    
     setCurrentFolder(item.id);
     setPath(prev => prev.slice(0, index + 1));
   };
@@ -104,6 +186,27 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
 
   const handleServiceSelect = (serviceId: string) => {
     authenticateService(serviceId);
+  };
+  
+  const handleDisconnectService = (serviceId: string) => {
+    // If we're currently viewing a folder from this service, go back to root
+    if (currentFolderService === serviceId) {
+      setCurrentFolderService(null);
+      setCurrentFolder('root');
+      setPath([{
+        id: 'root', name: 'My Drives', type: 'folder', modifiedAt: '',
+        parentId: null
+      }]);
+    }
+    
+    disconnectService(serviceId);
+  };
+  
+  const handleSwitchService = (serviceId: string) => {
+    // No need to update actual authentication status, just switch the UI view
+    if (activeServices.includes(serviceId)) {
+      window.location.reload(); // Simple reload to ensure state is fresh
+    }
   };
 
   const renderSpinner = () => (
@@ -118,6 +221,34 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
 
   // Ensure items is always an array
   const safeItems = Array.isArray(items) ? items : [];
+  
+  // Display service name for files
+  const getServiceName = (service?: string) => {
+    if (!service) return '';
+    
+    switch(service) {
+      case 'google': return 'Google Drive';
+      case 'onedrive': return 'OneDrive';
+      case 'dropbox': return 'Dropbox';
+      case 'box': return 'Box';
+      default: return service;
+    }
+  };
+
+  // Get the current breadcrumb path with service indicators
+  const getBreadcrumbTitle = () => {
+    if (currentFolderService && path.length > 1) {
+      return (
+        <span className="flex items-center">
+          <span className="text-xs mr-2 px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800">
+            {getServiceName(currentFolderService)}
+          </span>
+          {path[path.length - 1].name}
+        </span>
+      );
+    }
+    return path[path.length - 1].name;
+  };
 
   return (
     <div className="h-screen flex flex-col bg-white dark:bg-gray-950 text-black dark:text-white">
@@ -134,39 +265,66 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
             <div className="hidden sm:block">
               <ThemeToggle />
             </div>
-            {isAuthenticated ? (
+            
+            {/* Always show Add Service button */}
+            <AddServiceButton 
+              onServiceSelect={handleServiceSelect}
+              availableServices={[
+                { id: 'google', name: 'Google Drive' },
+                { id: 'onedrive', name: 'OneDrive' },
+                { id: 'dropbox', name: 'Dropbox' },
+                { id: 'box', name: 'Box' },
+              ]}
+            />
+            
+            {isAuthenticated && (
               <>
                 <Button onClick={handleUpload} className="w-full sm:w-auto">
                   <Upload className="mr-2 h-4 w-4" />
                   Upload
                 </Button>
-                <div className="flex items-center">
-                  {currentService && (
-                    <span className="mr-2 text-sm text-muted-foreground capitalize">
-                      {currentService === 'google' ? 'Google Drive' : 'OneDrive'}
-                    </span>
-                  )}
-                  <Button variant="ghost" size="icon" onClick={logout} className="h-8 w-8">
-                    <LogOut className="h-4 w-4" />
-                    <span className="sr-only">Logout</span>
-                  </Button>
-                </div>
+                
+                {/* Service selector for multiple services */}
+                {activeServices.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <span className="capitalize mr-1">
+                          {activeServices.map(service => getServiceName(service)).join(', ')}
+                        </span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {activeServices.map(service => (
+                        <DropdownMenuItem 
+                          key={service}
+                          className="flex justify-between items-center"
+                        >
+                          <span className="capitalize">{getServiceName(service)}</span>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleDisconnectService(service)}
+                            className="ml-2 h-6 text-xs"
+                          >
+                            Disconnect
+                          </Button>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                
+                <Button variant="ghost" size="icon" onClick={logout} className="h-8 w-8">
+                  <LogOut className="h-4 w-4" />
+                  <span className="sr-only">Logout</span>
+                </Button>
               </>
-            ) : (
-              <AddServiceButton 
-                onServiceSelect={handleServiceSelect}
-                availableServices={[
-                  { id: 'google', name: 'Google Drive' },
-                  { id: 'onedrive', name: 'OneDrive' },
-                  { id: 'dropbox', name: 'Dropbox' },
-                  { id: 'box', name: 'Box' },
-                ]}
-              />
             )}
           </div>
         </div>
 
-        {/* Breadcrumb */}
+        {/* Breadcrumb with service indicators */}
         {isAuthenticated && (
           <div className="max-w-6xl mx-auto overflow-x-auto">
             <div className="flex items-center gap-2 mb-6 h-8 min-w-max">
@@ -178,7 +336,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                     className="p-0 h-auto"
                     onClick={() => handlePathClick(item, index)}
                   >
-                    {item.name}
+                    {index === path.length - 1 ? getBreadcrumbTitle() : item.name}
                   </Button>
                 </div>
               ))}
@@ -196,25 +354,34 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                 {error}
               </div>
             )}
+            
+            {/* Service indicator when viewing a specific service's folder */}
+            {currentFolderService && currentFolder !== 'root' && (
+              <div className="mb-4 p-3 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center">
+                <span>Viewing files from {getServiceName(currentFolderService)}</span>
+              </div>
+            )}
+            
             <div className="rounded-md border border-gray-200 dark:border-gray-800">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-gray-100 dark:hover:bg-gray-800">
-                    <TableHead className="w-[50%] bg-gray-50 dark:bg-gray-900 sticky top-0">Name</TableHead>
-                    <TableHead className="w-[25%] bg-gray-50 dark:bg-gray-900 sticky top-0 text-right">Modified</TableHead>
-                    <TableHead className="w-[25%] bg-gray-50 dark:bg-gray-900 sticky top-0 text-right">Size</TableHead>
+                    <TableHead className="w-[45%] bg-gray-50 dark:bg-gray-900 sticky top-0">Name</TableHead>
+                    <TableHead className="w-[20%] bg-gray-50 dark:bg-gray-900 sticky top-0 text-right">Modified</TableHead>
+                    <TableHead className="w-[15%] bg-gray-50 dark:bg-gray-900 sticky top-0 text-right">Size</TableHead>
+                    <TableHead className="w-[20%] bg-gray-50 dark:bg-gray-900 sticky top-0 text-right">Service</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {safeItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center py-8">
+                      <TableCell colSpan={4} className="text-center py-8">
                         No files found in this folder
                       </TableCell>
                     </TableRow>
                   ) : (
                     safeItems.map((item) => (
-                      <TableRow key={item.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800">
+                      <TableRow key={`${item.service}-${item.id}`} className="group hover:bg-gray-100 dark:hover:bg-gray-800">
                         <TableCell className="py-3">
                           <div className="flex items-start gap-2 min-h-[32px] w-full">
                             {item.type === 'folder' ? (
@@ -239,6 +406,9 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
                           {item.size || '-'}
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {getServiceName(item.service)}
                         </TableCell>
                       </TableRow>
                     ))

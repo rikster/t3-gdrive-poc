@@ -31,14 +31,23 @@ export async function storeTokens(tokens: TokenData, service: ServiceType = 'goo
   });
 }
 
+export async function getActiveServices(): Promise<ServiceType[]> {
+  const activeServices: ServiceType[] = [];
+  const cookieStore = cookies();
+  
+  const googleTokens = await cookieStore.get('google_tokens');
+  const onedriveTokens = await cookieStore.get('onedrive_tokens');
+
+  if (googleTokens) activeServices.push('google');
+  if (onedriveTokens) activeServices.push('onedrive');
+
+  return activeServices;
+}
+
+// Kept for backward compatibility
 export async function getActiveService(): Promise<ServiceType | null> {
-  const googleTokens = await cookies().get('google_tokens');
-  const onedriveTokens = await cookies().get('onedrive_tokens');
-
-  if (googleTokens) return 'google';
-  if (onedriveTokens) return 'onedrive';
-
-  return null;
+  const services = await getActiveServices();
+  return services.length > 0 ? services[0] : null;
 }
 
 export async function clearTokens(service?: ServiceType): Promise<void> {
