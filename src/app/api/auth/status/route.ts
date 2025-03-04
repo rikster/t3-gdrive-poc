@@ -1,11 +1,12 @@
 import { type NextRequest } from 'next/server';
-import { getStoredTokens } from '~/lib/session';
+import { getStoredTokens, getActiveService } from '~/lib/session';
 
 export async function GET(request: NextRequest) {
-  const tokens = getStoredTokens();
+  const activeService = await getActiveService();
+  const tokens = activeService ? await getStoredTokens(activeService) : null;
   
   return Response.json({
     isAuthenticated: !!tokens,
-    service: tokens ? 'google' : null
+    service: activeService
   });
 }

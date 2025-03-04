@@ -14,6 +14,9 @@ export const env = createEnv({
     GOOGLE_CLIENT_ID: z.string().min(1),
     GOOGLE_CLIENT_SECRET: z.string().min(1),
     GOOGLE_REDIRECT_URI: z.string().url(),
+    ONEDRIVE_CLIENT_ID: z.string().min(1),
+    ONEDRIVE_CLIENT_SECRET: z.string().min(1),
+    ONEDRIVE_REDIRECT_URI: z.string().url(),
   },
 
   /**
@@ -35,6 +38,9 @@ export const env = createEnv({
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
     GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
+    ONEDRIVE_CLIENT_ID: process.env.ONEDRIVE_CLIENT_ID,
+    ONEDRIVE_CLIENT_SECRET: process.env.ONEDRIVE_CLIENT_SECRET,
+    ONEDRIVE_REDIRECT_URI: process.env.ONEDRIVE_REDIRECT_URI,
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
   },
   /**
