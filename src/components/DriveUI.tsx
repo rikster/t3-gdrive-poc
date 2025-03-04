@@ -53,11 +53,11 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
   }, [initialError]);
 
   const fetchFiles = async (folderId: string) => {
-    if (initialItems || !isAuthenticated) return; // Don't fetch if we're using props or not authenticated
+    if (initialItems || !isAuthenticated || !currentService) return; // Don't fetch if we're using props or not authenticated
 
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/google?folderId=${folderId}`);
+      const response = await fetch(`/api/${currentService}?folderId=${folderId}`);
       const data = await response.json();
 
       if (data.url) {
@@ -69,7 +69,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
       setItems(data.files);
       setError(null);
     } catch (err) {
-      setError('Failed to fetch files');
+      setError(`Failed to fetch files from ${currentService}`);
       setItems([]);
     } finally {
       setIsLoading(false);
@@ -80,7 +80,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
     if (isAuthenticated) {
       fetchFiles(currentFolder);
     }
-  }, [currentFolder, isAuthenticated]);
+  }, [currentFolder, isAuthenticated, currentService]);
 
   const handleFolderClick = async (item: DriveItem) => {
     setCurrentFolder(item.id);
@@ -131,10 +131,17 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                   <Upload className="mr-2 h-4 w-4" />
                   Upload
                 </Button>
-                <Button variant="ghost" size="icon" onClick={logout} className="h-8 w-8">
-                  <LogOut className="h-4 w-4" />
-                  <span className="sr-only">Logout</span>
-                </Button>
+                <div className="flex items-center">
+                  {currentService && (
+                    <span className="mr-2 text-sm text-muted-foreground capitalize">
+                      {currentService === 'google' ? 'Google Drive' : 'OneDrive'}
+                    </span>
+                  )}
+                  <Button variant="ghost" size="icon" onClick={logout} className="h-8 w-8">
+                    <LogOut className="h-4 w-4" />
+                    <span className="sr-only">Logout</span>
+                  </Button>
+                </div>
               </>
             ) : (
               <AddServiceButton 
@@ -185,49 +192,62 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {items.map((item) => (
-                    <TableRow key={item.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800">
-                      <TableCell className="py-3">
-                        <div className="flex items-start gap-2 min-h-[32px] w-full">
-                          {item.type === 'folder' ? (
-                            <Button
-                              variant="ghost"
-                              className="p-0 h-auto flex items-start justify-start text-left w-full"
-                              onClick={() => handleFolderClick(item)}
-                            >
-                              <FolderIcon className="h-5 w-5 mr-2 flex-shrink-0 text-blue-500 mt-1" />
-                              <span className="hover:underline whitespace-normal break-words">{item.name}</span>
-                            </Button>
-                          ) : (
-                            <Button variant="ghost" className="p-0 h-auto flex items-start justify-start text-left w-full" asChild>
-                              <a href={`https://drive.google.com/file/d/${item.id}/view`} target="_blank" rel="noopener noreferrer" className="w-full">
-                                <FileIcon className="h-5 w-5 mr-2 flex-shrink-0 text-gray-500 dark:text-gray-400 mt-1" />
-                                <span className="hover:underline whitespace-normal break-words">{item.name}</span>
-                              </a>
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-right align-top py-3">
-                        {item.modifiedAt}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-right align-top py-3">
-                        {item.size || '--'}
+                  {items.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-8">
+                        No files found in this folder
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    items.map((item) => (
+                      <TableRow key={item.id} className="group hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <TableCell className="py-3">
+                          <div className="flex items-start gap-2 min-h-[32px] w-full">
+                            {item.type === 'folder' ? (
+                              <Button
+                                variant="ghost"
+                                className="p-0 h-auto flex items-start justify-start text-left w-full"
+                                onClick={() => handleFolderClick(item)}
+                              >
+                                <FolderIcon className="h-5 w-5 mr-2 flex-shrink-0 text-blue-500 mt-1" />
+                                <span className="hover:underline whitespace-normal break-words">{item.name}</span>
+                              </Button>
+                            ) : (
+                              <div className="flex items-start w-full">
+                                <FileIcon className="h-5 w-5 mr-2 flex-shrink-0 text-gray-500 mt-1" />
+                                <span className="whitespace-normal break-words">{item.name}</span>
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {item.modifiedAt}
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {item.size || '-'}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center">
-            <div className="text-center max-w-md">
-              <h2 className="text-2xl font-bold mb-4">Connect to a Drive</h2>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Get started by connecting to your favorite cloud storage service using the + button in the top right corner.
-              </p>
-            </div>
+          <div className="max-w-md mx-auto text-center py-16">
+            <h2 className="text-xl font-medium mb-4">Welcome to StrataFusion</h2>
+            <p className="text-muted-foreground mb-8">
+              Connect to your cloud storage to view and manage your files.
+            </p>
+            <AddServiceButton 
+              onServiceSelect={handleServiceSelect}
+              availableServices={[
+                { id: 'google', name: 'Google Drive' },
+                { id: 'onedrive', name: 'OneDrive' },
+                { id: 'dropbox', name: 'Dropbox' },
+                { id: 'box', name: 'Box' },
+              ]}
+            />
           </div>
         )}
       </div>

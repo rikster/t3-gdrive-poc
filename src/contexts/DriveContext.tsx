@@ -39,29 +39,32 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   const authenticateService = async (serviceId: string) => {
     setIsAuthenticating(true);
     
-    if (serviceId === 'google') {
-      try {
-        const response = await fetch(`/api/google`);
-        const data = await response.json();
-        
-        if (data.url) {
-          // Need to authenticate
-          window.location.href = data.url;
-          // Note: We don't set isAuthenticating to false here because we're redirecting
-        }
-      } catch (error) {
-        console.error('Failed to authenticate:', error);
-        setIsAuthenticating(false);
+    try {
+      // Generalized approach for any service
+      const response = await fetch(`/api/${serviceId}`);
+      const data = await response.json();
+      
+      if (data.url) {
+        // Need to authenticate
+        window.location.href = data.url;
+        // Note: We don't set isAuthenticating to false here because we're redirecting
+        return;
       }
-    } else {
-      alert(`Authentication for ${serviceId} not implemented yet.`);
+      setIsAuthenticating(false);
+    } catch (error) {
+      console.error(`Failed to authenticate with ${serviceId}:`, error);
       setIsAuthenticating(false);
     }
   };
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      // Pass the current service as a query parameter if it exists
+      const url = currentService 
+        ? `/api/auth/logout?service=${currentService}` 
+        : '/api/auth/logout';
+      
+      await fetch(url, { method: 'POST' });
       setIsAuthenticated(false);
       setCurrentService(null);
     } catch (error) {
