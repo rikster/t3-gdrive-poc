@@ -7,6 +7,7 @@ import { Upload, FileIcon, FolderIcon, LogOut } from 'lucide-react';
 import { ThemeToggle } from './theme/ThemeToggle';
 import { AddServiceButton } from './AddServiceButton';
 import { useDrive } from '~/contexts/DriveContext';
+import { LoadingSpinner } from './ui/loading-spinner';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -209,14 +210,8 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
     }
   };
 
-  const renderSpinner = () => (
-    <div className="h-screen flex items-center justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"></div>
-    </div>
-  );
-
   if (isLoading || isAuthenticating) {
-    return renderSpinner();
+    return <LoadingSpinner />;
   }
 
   // Ensure items is always an array
