@@ -5,6 +5,7 @@ export interface DriveItem {
   size?: string;
   modifiedAt: string;
   parentId: string | null;
+  service?: string;
 }
 
 export const mockDriveData: DriveItem[] = [
@@ -14,6 +15,7 @@ export const mockDriveData: DriveItem[] = [
     type: 'folder',
     modifiedAt: '2025-02-20',
     parentId: 'root',
+    service: 'googledrive'
   },
   {
     id: 'folder2',
@@ -21,6 +23,7 @@ export const mockDriveData: DriveItem[] = [
     type: 'folder',
     modifiedAt: '2025-02-19',
     parentId: 'root',
+    service: 'onedrive'
   },
   {
     id: 'file1',
@@ -29,6 +32,7 @@ export const mockDriveData: DriveItem[] = [
     size: '2.5 MB',
     modifiedAt: '2025-02-18',
     parentId: 'folder1',
+    service: 'googledrive'
   },
   {
     id: 'file2',
@@ -37,6 +41,7 @@ export const mockDriveData: DriveItem[] = [
     size: '500 KB',
     modifiedAt: '2025-02-17',
     parentId: 'folder1',
+    service: 'googledrive'
   },
   {
     id: 'file3',
@@ -45,5 +50,6 @@ export const mockDriveData: DriveItem[] = [
     size: '1.2 MB',
     modifiedAt: '2025-02-16',
     parentId: 'folder2',
+    service: 'onedrive'
   },
 ];

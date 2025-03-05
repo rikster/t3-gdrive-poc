@@ -14,6 +14,7 @@ export interface DriveContextType {
 }
 
 const DriveContext = createContext<DriveContextType | undefined>(undefined);
+export { DriveContext }; // Export the context for testing
 
 export function DriveProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);

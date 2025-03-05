@@ -1,6 +1,26 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { DriveUI } from './DriveUI';
 import { mockDriveData } from '../lib/mock-data';
+import { DriveContext, DriveContextType } from '~/contexts/DriveContext';
+import React from 'react';
+
+// Mock the DriveContext values
+const mockDriveContextValue: DriveContextType = {
+  isAuthenticated: true,
+  authenticateService: () => {}, // Mock function
+  disconnectService: () => {}, // Mock function
+  logout: () => {}, // Mock function
+  currentService: 'googledrive',
+  activeServices: ['googledrive', 'onedrive'],
+  isAuthenticating: false
+};
+
+// Create a decorator with mocked DriveContext
+const withMockedDriveContext = (Story: React.ComponentType) => (
+  <DriveContext.Provider value={mockDriveContextValue}>
+    <Story />
+  </DriveContext.Provider>
+);
 
 const meta = {
   title: 'Components/DriveUI',
@@ -9,6 +29,7 @@ const meta = {
     layout: 'fullscreen',
   },
   tags: ['autodocs'],
+  decorators: [withMockedDriveContext], // Add the decorator to all stories
 } satisfies Meta<typeof DriveUI>;
 
 export default meta;
