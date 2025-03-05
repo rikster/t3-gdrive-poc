@@ -210,10 +210,6 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
     }
   };
 
-  if (isLoading || isAuthenticating) {
-    return <LoadingSpinner />;
-  }
-
   // Ensure items is always an array
   const safeItems = Array.isArray(items) ? items : [];
   
@@ -358,75 +354,91 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
             )}
             
             <div className="rounded-md border border-gray-200 dark:border-gray-800">
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-gray-100 dark:hover:bg-gray-800">
-                    <TableHead className="w-[45%] bg-gray-50 dark:bg-gray-900 sticky top-0">Name</TableHead>
-                    <TableHead className="w-[20%] bg-gray-50 dark:bg-gray-900 sticky top-0 text-right">Modified</TableHead>
-                    <TableHead className="w-[15%] bg-gray-50 dark:bg-gray-900 sticky top-0 text-right">Size</TableHead>
-                    <TableHead className="w-[20%] bg-gray-50 dark:bg-gray-900 sticky top-0 text-right">Service</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {safeItems.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8">
-                        No files found in this folder
-                      </TableCell>
+              {isLoading ? (
+                <div className="py-16">
+                  <LoadingSpinner spinnerSize="md" containerClassName="py-8" />
+                  <p className="text-center text-muted-foreground">Loading files...</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-gray-100 dark:hover:bg-gray-800">
+                      <TableHead className="w-[45%] bg-gray-50 dark:bg-gray-900 sticky top-0">Name</TableHead>
+                      <TableHead className="w-[20%] bg-gray-50 dark:bg-gray-900 sticky top-0 text-right">Modified</TableHead>
+                      <TableHead className="w-[15%] bg-gray-50 dark:bg-gray-900 sticky top-0 text-right">Size</TableHead>
+                      <TableHead className="w-[20%] bg-gray-50 dark:bg-gray-900 sticky top-0 text-right">Service</TableHead>
                     </TableRow>
-                  ) : (
-                    safeItems.map((item) => (
-                      <TableRow key={`${item.service}-${item.id}`} className="group hover:bg-gray-100 dark:hover:bg-gray-800">
-                        <TableCell className="py-3">
-                          <div className="flex items-start gap-2 min-h-[32px] w-full">
-                            {item.type === 'folder' ? (
-                              <Button
-                                variant="ghost"
-                                className="p-0 h-auto flex items-start justify-start text-left w-full"
-                                onClick={() => handleFolderClick(item)}
-                              >
-                                <FolderIcon className="h-5 w-5 mr-2 flex-shrink-0 text-blue-500 mt-1" />
-                                <span className="hover:underline whitespace-normal break-words">{item.name}</span>
-                              </Button>
-                            ) : (
-                              <div className="flex items-start w-full">
-                                <FileIcon className="h-5 w-5 mr-2 flex-shrink-0 text-gray-500 mt-1" />
-                                <span className="whitespace-normal break-words">{item.name}</span>
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {item.modifiedAt}
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {item.size || '-'}
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {getServiceName(item.service)}
+                  </TableHeader>
+                  <TableBody>
+                    {safeItems.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8">
+                          No files found in this folder
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ) : (
+                      safeItems.map((item) => (
+                        <TableRow key={`${item.service}-${item.id}`} className="group hover:bg-gray-100 dark:hover:bg-gray-800">
+                          <TableCell className="py-3">
+                            <div className="flex items-start gap-2 min-h-[32px] w-full">
+                              {item.type === 'folder' ? (
+                                <Button
+                                  variant="ghost"
+                                  className="p-0 h-auto flex items-start justify-start text-left w-full"
+                                  onClick={() => handleFolderClick(item)}
+                                >
+                                  <FolderIcon className="h-5 w-5 mr-2 flex-shrink-0 text-blue-500 mt-1" />
+                                  <span className="hover:underline whitespace-normal break-words">{item.name}</span>
+                                </Button>
+                              ) : (
+                                <div className="flex items-start w-full">
+                                  <FileIcon className="h-5 w-5 mr-2 flex-shrink-0 text-gray-500 mt-1" />
+                                  <span className="whitespace-normal break-words">{item.name}</span>
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            {item.modifiedAt}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            {item.size || '-'}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            {getServiceName(item.service)}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              )}
             </div>
           </div>
         ) : (
           <div className="max-w-md mx-auto text-center py-16">
-            <h2 className="text-xl font-medium mb-4">Welcome to StrataFusion</h2>
-            <p className="text-muted-foreground mb-8">
-              Connect to your cloud storage to view and manage your files.
-            </p>
-            <AddServiceButton 
-              onServiceSelect={handleServiceSelect}
-              availableServices={[
-                { id: 'google', name: 'Google Drive' },
-                { id: 'onedrive', name: 'OneDrive' },
-                { id: 'dropbox', name: 'Dropbox' },
-                { id: 'box', name: 'Box' },
-              ]}
-            />
+            {isAuthenticating ? (
+              <div>
+                <LoadingSpinner spinnerSize="md" containerClassName="mb-4" />
+                <p className="text-muted-foreground">Connecting to service...</p>
+              </div>
+            ) : (
+              <>
+                <h2 className="text-xl font-medium mb-4">Welcome to StrataFusion</h2>
+                <p className="text-muted-foreground mb-8">
+                  Connect to your cloud storage to view and manage your files.
+                </p>
+                <AddServiceButton 
+                  onServiceSelect={handleServiceSelect}
+                  availableServices={[
+                    { id: 'google', name: 'Google Drive' },
+                    { id: 'onedrive', name: 'OneDrive' },
+                    { id: 'dropbox', name: 'Dropbox' },
+                    { id: 'box', name: 'Box' },
+                  ]}
+                />
+              </>
+            )}
           </div>
         )}
       </div>
