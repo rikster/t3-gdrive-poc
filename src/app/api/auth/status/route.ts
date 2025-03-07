@@ -4,7 +4,7 @@ import { type ServiceType } from '~/lib/session';
 
 export async function GET(request: NextRequest) {
   // Check cookies for all active services
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const googleTokens = await cookieStore.get('google_tokens');
   const onedriveTokens = await cookieStore.get('onedrive_tokens');
   

@@ -12,7 +12,7 @@ export type ServiceType = 'google' | 'onedrive';
 
 // Make sure to return the result directly without intermediate variables
 export async function getStoredTokens(service: ServiceType = 'google'): Promise<TokenData | null> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const tokenCookie = await cookieStore.get(`${service}_tokens`);
   if (!tokenCookie) return null;
 
@@ -24,7 +24,7 @@ export async function getStoredTokens(service: ServiceType = 'google'): Promise<
 }
 
 export async function storeTokens(tokens: TokenData, service: ServiceType = 'google'): Promise<void> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   await cookieStore.set(`${service}_tokens`, JSON.stringify(tokens), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -35,7 +35,7 @@ export async function storeTokens(tokens: TokenData, service: ServiceType = 'goo
 
 export async function getActiveServices(): Promise<ServiceType[]> {
   const activeServices: ServiceType[] = [];
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   
   const googleTokens = await cookieStore.get('google_tokens');
   const onedriveTokens = await cookieStore.get('onedrive_tokens');
@@ -53,7 +53,7 @@ export async function getActiveService(): Promise<ServiceType | null> {
 }
 
 export async function clearTokens(service?: ServiceType): Promise<void> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   if (!service) {
     // Clear all service tokens
     await cookieStore.delete('google_tokens');
