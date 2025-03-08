@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '~/components/ui/button';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '~/components/ui/table';
-import { Upload, FileIcon, FolderIcon, LogOut } from 'lucide-react';
+import { Upload, FileIcon, FolderIcon, LogOut, Search } from 'lucide-react';
 import { ThemeToggle } from './theme/ThemeToggle';
 import { AddServiceButton } from './AddServiceButton';
 import { useDrive } from '~/contexts/DriveContext';
@@ -39,11 +39,15 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
     logout, 
     currentService, 
     activeServices, 
-    isAuthenticating 
+    isAuthenticating,
+    searchQuery,
+    setSearchQuery,
+    isSearching
   } = useDrive();
   
   const [currentFolder, setCurrentFolder] = useState<string>('root');
   const [items, setItems] = useState<DriveItem[]>(initialItems || []);
+  const [filteredItems, setFilteredItems] = useState<DriveItem[]>([]);
   const [path, setPath] = useState<DriveItem[]>([{
     id: 'root', name: 'My Drives', type: 'folder', modifiedAt: '',
     parentId: null
@@ -51,7 +55,6 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
   const [isLoading, setIsLoading] = useState(initialLoading ?? false);
   const [error, setError] = useState<string | null>(initialError ?? null);
   const [serviceItems, setServiceItems] = useState<Record<string, DriveItem[]>>({});
-  // Track which service the current folder belongs to (null means 'root' or 'all services')
   const [currentFolderService, setCurrentFolderService] = useState<string | null>(null);
 
   useEffect(() => {
@@ -241,6 +244,25 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
     return path[path.length - 1].name;
   };
 
+  // Add search effect
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredItems(items);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const filtered = items.filter(item => 
+      item.name.toLowerCase().includes(query)
+    );
+    setFilteredItems(filtered);
+  }, [searchQuery, items]);
+
+  // Initialize filteredItems when items change
+  useEffect(() => {
+    setFilteredItems(items);
+  }, [items]);
+
   return (
     <div className="h-screen flex flex-col bg-white dark:bg-gray-950 text-black dark:text-white">
       <div className="flex-none p-4 sm:p-6">
@@ -255,6 +277,18 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
           <div className="flex items-center gap-4 w-full sm:w-auto">
             <div className="hidden sm:block">
               <ThemeToggle />
+            </div>
+            
+            {/* Search input */}
+            <div className="relative flex-grow max-w-xs">
+              <input
+                type="text"
+                placeholder="Search files..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 pr-4 py-2 w-full border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700"
+              />
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
             </div>
             
             {/* Always show Add Service button */}
@@ -289,74 +323,65 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                       {activeServices.map(service => (
                         <DropdownMenuItem 
                           key={service}
-                          className="flex justify-between items-center"
+                          onClick={() => handleDisconnectService(service)}
+                          className="cursor-pointer text-red-500 hover:text-red-700"
                         >
-                          <span className="capitalize">{getServiceName(service)}</span>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleDisconnectService(service)}
-                            className="ml-2 h-6 text-xs"
-                          >
-                            Disconnect
-                          </Button>
+                          Disconnect {getServiceName(service)}
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
                 
-                <Button variant="ghost" size="icon" onClick={logout} className="h-8 w-8">
-                  <LogOut className="h-4 w-4" />
-                  <span className="sr-only">Logout</span>
+                <Button variant="outline" onClick={logout} size="sm">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Logout</span>
                 </Button>
               </>
             )}
           </div>
         </div>
-
-        {/* Breadcrumb with service indicators */}
-        {isAuthenticated && (
-          <div className="max-w-6xl mx-auto overflow-x-auto">
-            <div className="flex items-center gap-2 mb-6 h-8 min-w-max">
-              {path.map((item, index) => (
-                <div key={item.id} className="flex items-center">
-                  {index > 0 && <span className="mx-2 text-muted-foreground">/</span>}
-                  <Button
-                    variant="link"
-                    className="p-0 h-auto"
-                    onClick={() => handlePathClick(item, index)}
-                  >
-                    {index === path.length - 1 ? getBreadcrumbTitle() : item.name}
-                  </Button>
-                </div>
-              ))}
-            </div>
+        
+        {/* Path navigation */}
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center text-sm mb-4 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700 py-1">
+            {path.map((item, index) => (
+              <div key={item.id} className="flex items-center min-w-fit">
+                {index > 0 && <span className="mx-2 text-gray-400">/</span>}
+                <button
+                  onClick={() => handlePathClick(item, index)}
+                  className={`hover:underline ${
+                    index === path.length - 1
+                      ? 'font-medium'
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  {item.name}
+                  {item.service && index === path.length - 1 && (
+                    <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+                      {getServiceName(item.service)}
+                    </span>
+                  )}
+                </button>
+              </div>
+            ))}
           </div>
-        )}
+        </div>
       </div>
-
-      {/* File List or Welcome Screen */}
-      <div className="flex-1 overflow-auto px-4 sm:px-6 pb-6">
-        {isAuthenticated ? (
-          <div className="max-w-6xl mx-auto">
+      
+      <div className="flex-grow overflow-auto">
+        <div className="max-w-6xl mx-auto">
+          <div className="bg-white dark:bg-gray-950 rounded-lg border dark:border-gray-800 overflow-hidden">
             {error && (
-              <div className="mb-4 p-4 rounded-md bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400">
-                {error}
+              <div className="p-4 bg-red-50 dark:bg-red-900/20 border-b border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400">
+                <p>{error}</p>
               </div>
             )}
             
-            {/* Service indicator when viewing a specific service's folder */}
-            {currentFolderService && currentFolder !== 'root' && (
-              <div className="mb-4 p-3 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center">
-                <span>Viewing files from {getServiceName(currentFolderService)}</span>
-              </div>
-            )}
-            
-            <div className="rounded-md border border-gray-200 dark:border-gray-800">
-              {isLoading ? (
+            <div className="relative">
+              {(isLoading || isAuthenticating) ? (
                 <div className="py-16">
-                  <LoadingSpinner spinnerSize="md" containerClassName="py-8" />
+                  <LoadingSpinner />
                   <p className="text-center text-muted-foreground">Loading files...</p>
                 </div>
               ) : (
@@ -370,14 +395,14 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {safeItems.length === 0 ? (
+                    {filteredItems.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={4} className="text-center py-8">
-                          No files found in this folder
+                          {searchQuery ? 'No files match your search' : 'No files found in this folder'}
                         </TableCell>
                       </TableRow>
                     ) : (
-                      safeItems.map((item) => (
+                      filteredItems.map((item) => (
                         <TableRow key={`${item.service}-${item.id}`} className="group hover:bg-gray-100 dark:hover:bg-gray-800">
                           <TableCell className="py-3">
                             <div className="flex items-start gap-2 min-h-[32px] w-full">
@@ -415,32 +440,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
               )}
             </div>
           </div>
-        ) : (
-          <div className="max-w-md mx-auto text-center py-16">
-            {isAuthenticating ? (
-              <div>
-                <LoadingSpinner spinnerSize="md" containerClassName="mb-4" />
-                <p className="text-muted-foreground">Connecting to service...</p>
-              </div>
-            ) : (
-              <>
-                <h2 className="text-xl font-medium mb-4">Welcome to StrataFusion</h2>
-                <p className="text-muted-foreground mb-8">
-                  Connect to your cloud storage to view and manage your files.
-                </p>
-                <AddServiceButton 
-                  onServiceSelect={handleServiceSelect}
-                  availableServices={[
-                    { id: 'google', name: 'Google Drive' },
-                    { id: 'onedrive', name: 'OneDrive' },
-                    { id: 'dropbox', name: 'Dropbox' },
-                    { id: 'box', name: 'Box' },
-                  ]}
-                />
-              </>
-            )}
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

@@ -11,6 +11,9 @@ export interface DriveContextType {
   currentService: string | null;
   activeServices: string[];
   isAuthenticating: boolean;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  isSearching: boolean;
 }
 
 const DriveContext = createContext<DriveContextType | undefined>(undefined);
@@ -21,6 +24,8 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   const [currentService, setCurrentService] = useState<string | null>(null);
   const [activeServices, setActiveServices] = useState<string[]>([]);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
 
   // Check if we have stored tokens (done on client side to prevent hydration issues)
   useEffect(() => {
@@ -109,7 +114,10 @@ export function DriveProvider({ children }: { children: ReactNode }) {
       logout, 
       currentService,
       activeServices,
-      isAuthenticating 
+      isAuthenticating,
+      searchQuery,
+      setSearchQuery,
+      isSearching
     }}>
       {children}
     </DriveContext.Provider>
