@@ -32,13 +32,13 @@ interface DriveUIProps {
 }
 
 export function DriveUI({ items: initialItems, loading: initialLoading, error: initialError }: DriveUIProps = {}) {
-  const { 
-    isAuthenticated, 
-    authenticateService, 
-    disconnectService, 
-    logout, 
-    currentService, 
-    activeServices, 
+  const {
+    isAuthenticated,
+    authenticateService,
+    disconnectService,
+    logout,
+    currentService,
+    activeServices,
     isAuthenticating,
     searchQuery,
     setSearchQuery,
@@ -48,7 +48,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
     clearSearch,
     isRecursiveSearch
   } = useDrive();
-  
+
   const [currentFolder, setCurrentFolder] = useState<string>('root');
   const [items, setItems] = useState<DriveItem[]>(initialItems || []);
   const [filteredItems, setFilteredItems] = useState<DriveItem[]>([]);
@@ -97,10 +97,10 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
       }
 
       // Ensure data.files is always an array and add service property
-      const files = Array.isArray(data.files) 
-        ? data.files.map((file: DriveItem) => ({ ...file, service })) 
+      const files = Array.isArray(data.files)
+        ? data.files.map((file: DriveItem) => ({ ...file, service }))
         : [];
-      
+
       return files;
     } catch (err) {
       console.error(`Failed to fetch files from ${service}:`, err);
@@ -115,10 +115,10 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
 
     setIsLoading(true);
     setError(null);
-    
+
     try {
       let allFiles: DriveItem[] = [];
-      
+
       // If we're at root level or no specific service is set, fetch from all services
       if (folderId === 'root' || !currentFolderService) {
         const serviceResults: Record<string, DriveItem[]> = {};
@@ -130,7 +130,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
 
         const results = await Promise.all(allFilesPromises);
         allFiles = results.flat();
-        
+
         // Update state with all services' files
         setServiceItems(serviceResults);
         setCurrentFolderService(null); // At root, no specific service
@@ -141,17 +141,17 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
         serviceResults[currentFolderService] = allFiles;
         setServiceItems(serviceResults);
       }
-      
+
       // Combine all files and sort them (folders first, then alphabetically)
       const sortedFiles = allFiles.sort((a, b) => {
         // First sort by type (folders first)
         if (a.type === 'folder' && b.type !== 'folder') return -1;
         if (a.type !== 'folder' && b.type === 'folder') return 1;
-        
+
         // Then sort alphabetically by name
         return a.name.localeCompare(b.name);
       });
-      
+
       setItems(sortedFiles);
     } catch (err) {
       setError(`Failed to fetch files from one or more services`);
@@ -172,7 +172,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
     if (item.service) {
       setCurrentFolderService(item.service);
     }
-    
+
     setCurrentFolder(item.id);
     setPath(prev => [...prev, item]);
   };
@@ -184,7 +184,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
     } else if (item.service) {
       setCurrentFolderService(item.service);
     }
-    
+
     setCurrentFolder(item.id);
     setPath(prev => prev.slice(0, index + 1));
   };
@@ -196,7 +196,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
   const handleServiceSelect = (serviceId: string) => {
     authenticateService(serviceId);
   };
-  
+
   const handleDisconnectService = (serviceId: string) => {
     // If we're currently viewing a folder from this service, go back to root
     if (currentFolderService === serviceId) {
@@ -207,10 +207,10 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
         parentId: null
       }]);
     }
-    
+
     disconnectService(serviceId);
   };
-  
+
   const handleSwitchService = (serviceId: string) => {
     // No need to update actual authentication status, just switch the UI view
     if (activeServices.includes(serviceId)) {
@@ -220,12 +220,12 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
 
   // Ensure items is always an array
   const safeItems = Array.isArray(items) ? items : [];
-  
+
   // Display service name for files
   const getServiceName = (service?: string) => {
     if (!service) return '';
-    
-    switch(service) {
+
+    switch (service) {
       case 'google': return 'Google Drive';
       case 'onedrive': return 'OneDrive';
       case 'dropbox': return 'Dropbox';
@@ -253,7 +253,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchInputValue(value);
-    
+
     // For instant filtering of current folder contents
     if (value.trim() === '') {
       clearSearch();
@@ -280,7 +280,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
       }
 
       const query = searchQuery.toLowerCase();
-      const filtered = items.filter(item => 
+      const filtered = items.filter(item =>
         item.name.toLowerCase().includes(query)
       );
       setFilteredItems(filtered);
@@ -309,6 +309,22 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
     }
   }, [currentFolder]);
 
+  // Clear items and filteredItems when logging out
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setItems([]);
+      setFilteredItems([]);
+      setSearchInputValue("");
+      clearSearch();
+      setCurrentFolder('root');
+      setPath([{
+        id: 'root', name: 'My Drives', type: 'folder', modifiedAt: '',
+        parentId: null
+      }]);
+      setCurrentFolderService(null);
+    }
+  }, [isAuthenticated]);
+
   return (
     <div className="h-screen flex flex-col bg-white dark:bg-gray-950 text-black dark:text-white">
       <div className="flex-none p-4 sm:p-6">
@@ -324,27 +340,27 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
             <div className="hidden sm:block">
               <ThemeToggle />
             </div>
-            
+
             {/* Search input with form for submission */}
             <form onSubmit={handleSearchSubmit} className="relative flex-grow max-w-xs">
               <input
                 type="text"
-                placeholder="Search all files..."
+                placeholder="Search onscreen..."
                 value={searchInputValue}
                 onChange={handleSearchInputChange}
                 className="pl-8 pr-4 py-2 w-full border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700"
               />
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="absolute right-2 top-2 text-xs text-blue-500 hover:text-blue-700"
               >
                 Search All
               </button>
             </form>
-            
+
             {/* Always show Add Service button */}
-            <AddServiceButton 
+            <AddServiceButton
               onServiceSelect={handleServiceSelect}
               availableServices={[
                 { id: 'google', name: 'Google Drive' },
@@ -353,14 +369,14 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                 { id: 'box', name: 'Box' },
               ]}
             />
-            
+
             {isAuthenticated && (
               <>
                 <Button onClick={handleUpload} className="w-full sm:w-auto">
                   <Upload className="mr-2 h-4 w-4" />
                   Upload
                 </Button>
-                
+
                 {/* Service selector for multiple services */}
                 {activeServices.length > 0 && (
                   <DropdownMenu>
@@ -373,7 +389,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       {activeServices.map(service => (
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           key={service}
                           onClick={() => handleDisconnectService(service)}
                           className="cursor-pointer text-red-500 hover:text-red-700"
@@ -384,7 +400,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
-                
+
                 <Button variant="outline" onClick={logout} size="sm">
                   <LogOut className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">Logout</span>
@@ -393,7 +409,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
             )}
           </div>
         </div>
-        
+
         {/* Path navigation */}
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center text-sm mb-4 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700 py-1">
@@ -426,11 +442,10 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                   {index > 0 && <span className="mx-2 text-gray-400">/</span>}
                   <button
                     onClick={() => handlePathClick(item, index)}
-                    className={`hover:underline ${
-                      index === path.length - 1
-                        ? 'font-medium'
-                        : 'text-muted-foreground'
-                    }`}
+                    className={`hover:underline ${index === path.length - 1
+                      ? 'font-medium'
+                      : 'text-muted-foreground'
+                      }`}
                   >
                     {item.name}
                     {item.service && index === path.length - 1 && (
@@ -445,7 +460,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
           </div>
         </div>
       </div>
-      
+
       <div className="flex-grow overflow-auto">
         <div className="max-w-6xl mx-auto">
           <div className="bg-white dark:bg-gray-950 rounded-lg border dark:border-gray-800 overflow-hidden">
@@ -454,7 +469,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                 <p>{error}</p>
               </div>
             )}
-            
+
             <div className="relative">
               {(isLoading || isAuthenticating || isSearching) ? (
                 <div className="py-16">
@@ -477,8 +492,8 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                     {filteredItems.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={4} className="text-center py-8">
-                          {searchQuery 
-                            ? `No files match "${searchQuery}"` 
+                          {searchQuery
+                            ? `No files match "${searchQuery}"`
                             : 'No files found in this folder'}
                         </TableCell>
                       </TableRow>
