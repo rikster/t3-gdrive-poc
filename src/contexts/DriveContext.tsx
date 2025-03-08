@@ -11,6 +11,13 @@ export interface DriveContextType {
   currentService: string | null;
   activeServices: string[];
   isAuthenticating: boolean;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  isSearching: boolean;
+  searchResults: any[];
+  performSearch: (query: string) => Promise<void>;
+  clearSearch: () => void;
+  isRecursiveSearch: boolean;
 }
 
 const DriveContext = createContext<DriveContextType | undefined>(undefined);
@@ -21,6 +28,10 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   const [currentService, setCurrentService] = useState<string | null>(null);
   const [activeServices, setActiveServices] = useState<string[]>([]);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isRecursiveSearch, setIsRecursiveSearch] = useState(false);
 
   // Check if we have stored tokens (done on client side to prevent hydration issues)
   useEffect(() => {
@@ -101,6 +112,44 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Perform a recursive search across all services and folders
+  const performSearch = async (query: string) => {
+    if (!query.trim() || !isAuthenticated || activeServices.length === 0) {
+      setSearchResults([]);
+      setIsRecursiveSearch(false);
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchQuery(query);
+    setIsRecursiveSearch(true);
+
+    try {
+      // Call the search API endpoint
+      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+      const data = await response.json();
+
+      if (data.error) {
+        console.error('Search error:', data.error);
+        setSearchResults([]);
+      } else {
+        setSearchResults(data.files || []);
+      }
+    } catch (error) {
+      console.error('Failed to perform search:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Clear search results and reset search state
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setIsRecursiveSearch(false);
+  };
+
   return (
     <DriveContext.Provider value={{ 
       isAuthenticated, 
@@ -109,7 +158,14 @@ export function DriveProvider({ children }: { children: ReactNode }) {
       logout, 
       currentService,
       activeServices,
-      isAuthenticating 
+      isAuthenticating,
+      searchQuery,
+      setSearchQuery,
+      isSearching,
+      searchResults,
+      performSearch,
+      clearSearch,
+      isRecursiveSearch
     }}>
       {children}
     </DriveContext.Provider>
