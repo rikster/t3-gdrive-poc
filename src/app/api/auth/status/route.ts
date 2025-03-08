@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   const cookieStore = await cookies();
   const googleTokens = await cookieStore.get('google_tokens');
   const onedriveTokens = await cookieStore.get('onedrive_tokens');
+  const dropboxTokens = await cookieStore.get('dropbox_tokens');
   
   const activeServices: ServiceType[] = [];
   
@@ -16,6 +17,10 @@ export async function GET(request: NextRequest) {
   
   if (onedriveTokens) {
     activeServices.push('onedrive');
+  }
+  
+  if (dropboxTokens) {
+    activeServices.push('dropbox');
   }
   
   // For backward compatibility
