@@ -42,7 +42,11 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
     isAuthenticating,
     searchQuery,
     setSearchQuery,
-    isSearching
+    isSearching,
+    searchResults,
+    performSearch,
+    clearSearch,
+    isRecursiveSearch
   } = useDrive();
   
   const [currentFolder, setCurrentFolder] = useState<string>('root');
@@ -56,6 +60,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
   const [error, setError] = useState<string | null>(initialError ?? null);
   const [serviceItems, setServiceItems] = useState<Record<string, DriveItem[]>>({});
   const [currentFolderService, setCurrentFolderService] = useState<string | null>(null);
+  const [searchInputValue, setSearchInputValue] = useState("");
 
   useEffect(() => {
     if (initialItems) {
@@ -244,24 +249,65 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
     return path[path.length - 1].name;
   };
 
-  // Add search effect
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
+  // Handle search input changes
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchInputValue(value);
+    
+    // For instant filtering of current folder contents
+    if (value.trim() === '') {
+      clearSearch();
       setFilteredItems(items);
-      return;
+    } else {
+      setSearchQuery(value);
     }
+  };
 
-    const query = searchQuery.toLowerCase();
-    const filtered = items.filter(item => 
-      item.name.toLowerCase().includes(query)
-    );
-    setFilteredItems(filtered);
-  }, [searchQuery, items]);
+  // Handle search submission (for recursive search)
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchInputValue.trim()) {
+      performSearch(searchInputValue);
+    }
+  };
 
-  // Initialize filteredItems when items change
+  // Effect for local filtering (non-recursive)
   useEffect(() => {
-    setFilteredItems(items);
-  }, [items]);
+    if (!isRecursiveSearch) {
+      if (searchQuery.trim() === '') {
+        setFilteredItems(items);
+        return;
+      }
+
+      const query = searchQuery.toLowerCase();
+      const filtered = items.filter(item => 
+        item.name.toLowerCase().includes(query)
+      );
+      setFilteredItems(filtered);
+    }
+  }, [searchQuery, items, isRecursiveSearch]);
+
+  // Effect for recursive search results
+  useEffect(() => {
+    if (isRecursiveSearch && searchResults.length > 0) {
+      setFilteredItems(searchResults);
+    }
+  }, [searchResults, isRecursiveSearch]);
+
+  // Initialize filteredItems when items change and no search is active
+  useEffect(() => {
+    if (!searchQuery) {
+      setFilteredItems(items);
+    }
+  }, [items, searchQuery]);
+
+  // Clear search when navigating to a different folder
+  useEffect(() => {
+    if (searchQuery && !isRecursiveSearch) {
+      clearSearch();
+      setSearchInputValue("");
+    }
+  }, [currentFolder]);
 
   return (
     <div className="h-screen flex flex-col bg-white dark:bg-gray-950 text-black dark:text-white">
@@ -279,17 +325,23 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
               <ThemeToggle />
             </div>
             
-            {/* Search input */}
-            <div className="relative flex-grow max-w-xs">
+            {/* Search input with form for submission */}
+            <form onSubmit={handleSearchSubmit} className="relative flex-grow max-w-xs">
               <input
                 type="text"
-                placeholder="Search files..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search all files..."
+                value={searchInputValue}
+                onChange={handleSearchInputChange}
                 className="pl-8 pr-4 py-2 w-full border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700"
               />
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-            </div>
+              <button 
+                type="submit" 
+                className="absolute right-2 top-2 text-xs text-blue-500 hover:text-blue-700"
+              >
+                Search All
+              </button>
+            </form>
             
             {/* Always show Add Service button */}
             <AddServiceButton 
@@ -345,26 +397,51 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
         {/* Path navigation */}
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center text-sm mb-4 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700 py-1">
-            {path.map((item, index) => (
-              <div key={item.id} className="flex items-center min-w-fit">
-                {index > 0 && <span className="mx-2 text-gray-400">/</span>}
+            {isRecursiveSearch ? (
+              <div className="flex items-center">
                 <button
-                  onClick={() => handlePathClick(item, index)}
-                  className={`hover:underline ${
-                    index === path.length - 1
-                      ? 'font-medium'
-                      : 'text-muted-foreground'
-                  }`}
+                  onClick={() => {
+                    clearSearch();
+                    setSearchInputValue("");
+                    // Return to root folder
+                    setCurrentFolder('root');
+                    setPath([{
+                      id: 'root', name: 'My Drives', type: 'folder', modifiedAt: '',
+                      parentId: null
+                    }]);
+                    setCurrentFolderService(null);
+                  }}
+                  className="text-blue-500 hover:underline"
                 >
-                  {item.name}
-                  {item.service && index === path.length - 1 && (
-                    <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
-                      {getServiceName(item.service)}
-                    </span>
-                  )}
+                  My Drives
                 </button>
+                <span className="mx-2 text-gray-400">/</span>
+                <span className="font-medium">
+                  Search results for "{searchQuery}"
+                </span>
               </div>
-            ))}
+            ) : (
+              path.map((item, index) => (
+                <div key={item.id} className="flex items-center min-w-fit">
+                  {index > 0 && <span className="mx-2 text-gray-400">/</span>}
+                  <button
+                    onClick={() => handlePathClick(item, index)}
+                    className={`hover:underline ${
+                      index === path.length - 1
+                        ? 'font-medium'
+                        : 'text-muted-foreground'
+                    }`}
+                  >
+                    {item.name}
+                    {item.service && index === path.length - 1 && (
+                      <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+                        {getServiceName(item.service)}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -379,10 +456,12 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
             )}
             
             <div className="relative">
-              {(isLoading || isAuthenticating) ? (
+              {(isLoading || isAuthenticating || isSearching) ? (
                 <div className="py-16">
                   <LoadingSpinner />
-                  <p className="text-center text-muted-foreground">Loading files...</p>
+                  <p className="text-center text-muted-foreground">
+                    {isSearching ? 'Searching...' : 'Loading files...'}
+                  </p>
                 </div>
               ) : (
                 <Table>
@@ -398,7 +477,9 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                     {filteredItems.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={4} className="text-center py-8">
-                          {searchQuery ? 'No files match your search' : 'No files found in this folder'}
+                          {searchQuery 
+                            ? `No files match "${searchQuery}"` 
+                            : 'No files found in this folder'}
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -410,7 +491,14 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                                 <Button
                                   variant="ghost"
                                   className="p-0 h-auto flex items-start justify-start text-left w-full"
-                                  onClick={() => handleFolderClick(item)}
+                                  onClick={() => {
+                                    if (isRecursiveSearch) {
+                                      // Clear search when navigating to a folder from search results
+                                      clearSearch();
+                                      setSearchInputValue("");
+                                    }
+                                    handleFolderClick(item);
+                                  }}
                                 >
                                   <FolderIcon className="h-5 w-5 mr-2 flex-shrink-0 text-blue-500 mt-1" />
                                   <span className="hover:underline whitespace-normal break-words">{item.name}</span>
