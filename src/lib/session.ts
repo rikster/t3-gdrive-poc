@@ -8,7 +8,7 @@ export interface TokenData {
   expiry_date: number;
 }
 
-export type ServiceType = 'google' | 'onedrive';
+export type ServiceType = 'google' | 'onedrive' | 'dropbox';
 
 // Make sure to return the result directly without intermediate variables
 export async function getStoredTokens(service: ServiceType = 'google'): Promise<TokenData | null> {
@@ -39,9 +39,11 @@ export async function getActiveServices(): Promise<ServiceType[]> {
   
   const googleTokens = await cookieStore.get('google_tokens');
   const onedriveTokens = await cookieStore.get('onedrive_tokens');
+  const dropboxTokens = await cookieStore.get('dropbox_tokens');
 
   if (googleTokens) activeServices.push('google');
   if (onedriveTokens) activeServices.push('onedrive');
+  if (dropboxTokens) activeServices.push('dropbox');
 
   return activeServices;
 }
@@ -58,6 +60,7 @@ export async function clearTokens(service?: ServiceType): Promise<void> {
     // Clear all service tokens
     await cookieStore.delete('google_tokens');
     await cookieStore.delete('onedrive_tokens');
+    await cookieStore.delete('dropbox_tokens');
   } else {
     // Clear only specified service token
     await cookieStore.delete(`${service}_tokens`);

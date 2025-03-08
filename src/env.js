@@ -17,6 +17,9 @@ export const env = createEnv({
     ONEDRIVE_CLIENT_ID: z.string().min(1),
     ONEDRIVE_CLIENT_SECRET: z.string().min(1),
     ONEDRIVE_REDIRECT_URI: z.string().url(),
+    DROPBOX_CLIENT_ID: z.string().min(1),
+    DROPBOX_CLIENT_SECRET: z.string().min(1),
+    DROPBOX_REDIRECT_URI: z.string().url(),
   },
 
   /**
@@ -41,6 +44,9 @@ export const env = createEnv({
     ONEDRIVE_CLIENT_ID: process.env.ONEDRIVE_CLIENT_ID,
     ONEDRIVE_CLIENT_SECRET: process.env.ONEDRIVE_CLIENT_SECRET,
     ONEDRIVE_REDIRECT_URI: process.env.ONEDRIVE_REDIRECT_URI,
+    DROPBOX_CLIENT_ID: process.env.DROPBOX_CLIENT_ID,
+    DROPBOX_CLIENT_SECRET: process.env.DROPBOX_CLIENT_SECRET,
+    DROPBOX_REDIRECT_URI: process.env.DROPBOX_REDIRECT_URI,
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
   },
   /**

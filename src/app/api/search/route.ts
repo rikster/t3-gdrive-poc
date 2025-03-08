@@ -86,6 +86,70 @@ async function searchOneDrive(query: string, token: any): Promise<SearchResult[]
   }
 }
 
+// Function to search Dropbox recursively
+async function searchDropbox(query: string, token: any): Promise<SearchResult[]> {
+  try {
+    console.log('Searching Dropbox for:', query);
+    // Use Dropbox API's search functionality
+    const response = await fetch(
+      'https://api.dropboxapi.com/2/files/search_v2',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          include_highlights: false,
+          options: {
+            filename_only: true,
+            file_extensions: [],
+            file_categories: []
+          }
+        }),
+      }
+    );
+
+    console.log('Dropbox search response status:', response.status);
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error ${response.status}`;
+      try {
+        const errorData = await response.json();
+        console.error('Dropbox search API error details:', errorData);
+        errorMessage = JSON.stringify(errorData);
+      } catch (e) {
+        const errorText = await response.text();
+        console.error('Dropbox search API error text:', errorText);
+        errorMessage = errorText;
+      }
+      throw new Error(`Dropbox search failed: ${errorMessage}`);
+    }
+
+    const data = await response.json();
+    console.log('Dropbox search results count:', data.matches?.length || 0);
+    
+    // Map Dropbox results to our SearchResult interface
+    return (data.matches || []).map((match: any) => {
+      const metadata = match.metadata.metadata;
+      return {
+        id: metadata.path_lower || metadata.id,
+        name: metadata.name,
+        type: metadata['.tag'] === 'folder' ? 'folder' : 'file',
+        size: metadata.size ? `${Math.round(metadata.size / 1024)} KB` : undefined,
+        modifiedAt: metadata.server_modified ? new Date(metadata.server_modified).toLocaleString() : '',
+        parentId: metadata.path_lower.split('/').slice(0, -1).join('/') || null,
+        service: 'dropbox',
+        path: metadata.path_display,
+      };
+    });
+  } catch (error) {
+    console.error('Error searching Dropbox:', error);
+    return [];
+  }
+}
+
 export async function GET(request: Request) {
   // Get query parameter
   const { searchParams } = new URL(request.url);
@@ -116,6 +180,11 @@ export async function GET(request: Request) {
         const token = await getStoredTokens('onedrive');
         if (token) {
           searchPromises.push(searchOneDrive(query, token));
+        }
+      } else if (service === 'dropbox') {
+        const token = await getStoredTokens('dropbox');
+        if (token) {
+          searchPromises.push(searchDropbox(query, token));
         }
       }
       // Add more services here as they are implemented
