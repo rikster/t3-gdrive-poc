@@ -41,10 +41,10 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         const response = await fetch('/api/auth/status');
         const data = await response.json();
         setIsAuthenticated(data.isAuthenticated);
-        
+
         if (data.activeServices && Array.isArray(data.activeServices)) {
           setActiveServices(data.activeServices);
-          
+
           // Set current service to the first active service if not already set
           if (data.activeServices.length > 0 && !currentService) {
             setCurrentService(data.activeServices[0]);
@@ -61,12 +61,12 @@ export function DriveProvider({ children }: { children: ReactNode }) {
 
   const authenticateService = async (serviceId: string) => {
     setIsAuthenticating(true);
-    
+
     try {
       // Generalized approach for any service
       const response = await fetch(`/api/${serviceId}`);
       const data = await response.json();
-      
+
       if (data.url) {
         // Need to authenticate
         window.location.href = data.url;
@@ -82,19 +82,28 @@ export function DriveProvider({ children }: { children: ReactNode }) {
 
   const disconnectService = async (serviceId: string) => {
     if (!activeServices.includes(serviceId)) return;
-    
+
     try {
       await fetch(`/api/auth/logout?service=${serviceId}`, { method: 'POST' });
-      
+
       // Update active services
       const updatedServices = activeServices.filter(s => s !== serviceId);
       setActiveServices(updatedServices);
-      
+
       // If we disconnected the current service, switch to another active service or null
       if (serviceId === currentService) {
-        setCurrentService(updatedServices.length > 0 ? updatedServices[0] : null);
+        if (updatedServices.length > 0) {
+          // Get the first service and ensure it's defined
+          const firstService = updatedServices[0];
+          if (firstService) {
+            setCurrentService(firstService);
+          } else {
+            setCurrentService(null);
+          }
+        } else {
+          setCurrentService(null);
+        }
       }
-      
       // Update authentication status
       setIsAuthenticated(updatedServices.length > 0);
     } catch (error) {
@@ -154,11 +163,11 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   // Open a file in its respective service
   const openFile = async (fileId: string, service: string) => {
     if (!fileId || !service) return;
-    
+
     try {
       const response = await fetch(`/api/${service}/open?fileId=${fileId}`);
       const data = await response.json();
-      
+
       if (data.url) {
         // Open the file URL in a new tab
         window.open(data.url, '_blank');
@@ -171,11 +180,11 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <DriveContext.Provider value={{ 
-      isAuthenticated, 
+    <DriveContext.Provider value={{
+      isAuthenticated,
       authenticateService,
       disconnectService,
-      logout, 
+      logout,
       currentService,
       activeServices,
       isAuthenticating,
