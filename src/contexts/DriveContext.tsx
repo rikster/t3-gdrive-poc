@@ -18,6 +18,7 @@ export interface DriveContextType {
   performSearch: (query: string) => Promise<void>;
   clearSearch: () => void;
   isRecursiveSearch: boolean;
+  openFile: (fileId: string, service: string) => Promise<void>;
 }
 
 const DriveContext = createContext<DriveContextType | undefined>(undefined);
@@ -150,6 +151,25 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     setIsRecursiveSearch(false);
   };
 
+  // Open a file in its respective service
+  const openFile = async (fileId: string, service: string) => {
+    if (!fileId || !service) return;
+    
+    try {
+      const response = await fetch(`/api/${service}/open?fileId=${fileId}`);
+      const data = await response.json();
+      
+      if (data.url) {
+        // Open the file URL in a new tab
+        window.open(data.url, '_blank');
+      } else if (data.error) {
+        console.error(`Failed to open file: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Failed to open file:', error);
+    }
+  };
+
   return (
     <DriveContext.Provider value={{ 
       isAuthenticated, 
@@ -165,7 +185,8 @@ export function DriveProvider({ children }: { children: ReactNode }) {
       searchResults,
       performSearch,
       clearSearch,
-      isRecursiveSearch
+      isRecursiveSearch,
+      openFile
     }}>
       {children}
     </DriveContext.Provider>
