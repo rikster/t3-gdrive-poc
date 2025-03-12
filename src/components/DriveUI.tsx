@@ -46,7 +46,8 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
     searchResults,
     performSearch,
     clearSearch,
-    isRecursiveSearch
+    isRecursiveSearch,
+    openFile
   } = useDrive();
 
   const [currentFolder, setCurrentFolder] = useState<string>('root');
@@ -519,10 +520,18 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                                   <span className="hover:underline whitespace-normal break-words">{item.name}</span>
                                 </Button>
                               ) : (
-                                <div className="flex items-start w-full">
+                                <Button
+                                  variant="ghost"
+                                  className="p-0 h-auto flex items-start justify-start text-left w-full"
+                                  onClick={() => {
+                                    if (item.service) {
+                                      openFile(item.id, item.service);
+                                    }
+                                  }}
+                                >
                                   <FileIcon className="h-5 w-5 mr-2 flex-shrink-0 text-gray-500 mt-1" />
-                                  <span className="whitespace-normal break-words">{item.name}</span>
-                                </div>
+                                  <span className="hover:underline whitespace-normal break-words">{item.name}</span>
+                                </Button>
                               )}
                             </div>
                           </TableCell>
