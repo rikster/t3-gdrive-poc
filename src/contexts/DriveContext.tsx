@@ -2,9 +2,12 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { ServiceType } from '~/lib/session';
+import { useRouter } from 'next/navigation';
+import { useClerk, useUser } from '@clerk/nextjs';
 
 export interface DriveContextType {
   isAuthenticated: boolean;
+  isClerkAuthenticated: boolean;
   authenticateService: (serviceId: string) => void;
   disconnectService: (serviceId: string) => void;
   logout: () => void;
@@ -25,7 +28,12 @@ const DriveContext = createContext<DriveContextType | undefined>(undefined);
 export { DriveContext }; // Export the context for testing
 
 export function DriveProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const { signOut } = useClerk();
+  const { isSignedIn, user } = useUser();
+  
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isClerkAuthenticated, setIsClerkAuthenticated] = useState(false);
   const [currentService, setCurrentService] = useState<string | null>(null);
   const [activeServices, setActiveServices] = useState<string[]>([]);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -34,9 +42,28 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isRecursiveSearch, setIsRecursiveSearch] = useState(false);
 
+  // Update Clerk authentication status
+  useEffect(() => {
+    setIsClerkAuthenticated(!!isSignedIn);
+  }, [isSignedIn]);
+
+  // Redirect to sign-in if not authenticated with Clerk
+  useEffect(() => {
+    if (!isSignedIn) {
+      router.push('/sign-in');
+    }
+  }, [isSignedIn, router]);
+
   // Check if we have stored tokens (done on client side to prevent hydration issues)
   useEffect(() => {
     const checkAuthStatus = async () => {
+      // Only check cloud service auth if user is signed in with Clerk
+      if (!isSignedIn) {
+        setIsAuthenticated(false);
+        setActiveServices([]);
+        return;
+      }
+      
       try {
         const response = await fetch('/api/auth/status');
         const data = await response.json();
@@ -57,7 +84,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     };
 
     checkAuthStatus();
-  }, [currentService]);
+  }, [currentService, isSignedIn]);
 
   const authenticateService = async (serviceId: string) => {
     setIsAuthenticating(true);
@@ -113,10 +140,16 @@ export function DriveProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
+      // First, log out from all cloud services
       await fetch('/api/auth/logout', { method: 'POST' });
       setIsAuthenticated(false);
       setCurrentService(null);
       setActiveServices([]);
+      
+      // Then sign out from Clerk and redirect to the sign-in page
+      await signOut(() => {
+        router.push('/sign-in');
+      });
     } catch (error) {
       console.error('Failed to logout:', error);
     }
@@ -175,28 +208,31 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         console.error(`Failed to open file: ${data.error}`);
       }
     } catch (error) {
-      console.error('Failed to open file:', error);
+      console.error(`Failed to open file (${service}:${fileId}):`, error);
     }
   };
 
   return (
-    <DriveContext.Provider value={{
-      isAuthenticated,
-      authenticateService,
-      disconnectService,
-      logout,
-      currentService,
-      activeServices,
-      isAuthenticating,
-      searchQuery,
-      setSearchQuery,
-      isSearching,
-      searchResults,
-      performSearch,
-      clearSearch,
-      isRecursiveSearch,
-      openFile
-    }}>
+    <DriveContext.Provider
+      value={{
+        isAuthenticated,
+        isClerkAuthenticated,
+        authenticateService,
+        disconnectService,
+        logout,
+        currentService,
+        activeServices,
+        isAuthenticating,
+        searchQuery,
+        setSearchQuery,
+        isSearching,
+        searchResults,
+        performSearch,
+        clearSearch,
+        isRecursiveSearch,
+        openFile
+      }}
+    >
       {children}
     </DriveContext.Provider>
   );
