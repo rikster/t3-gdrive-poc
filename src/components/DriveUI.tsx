@@ -34,6 +34,7 @@ interface DriveUIProps {
 export function DriveUI({ items: initialItems, loading: initialLoading, error: initialError }: DriveUIProps = {}) {
   const {
     isAuthenticated,
+    isClerkAuthenticated,
     authenticateService,
     disconnectService,
     logout,
@@ -252,7 +253,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
 
   // Handle search input changes
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+    const value = e.target?.value || '';
     setSearchInputValue(value);
 
     // For instant filtering of current folder contents
@@ -267,7 +268,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
   // Handle search submission (for recursive search)
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchInputValue.trim()) {
+    if (searchInputValue?.trim()) {
       performSearch(searchInputValue);
     }
   };
@@ -372,41 +373,42 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
             />
 
             {isAuthenticated && (
-              <>
-                <Button onClick={handleUpload} className="w-full sm:w-auto">
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload
-                </Button>
+              <Button onClick={handleUpload} className="w-full sm:w-auto">
+                <Upload className="mr-2 h-4 w-4" />
+                Upload
+              </Button>
+            )}
 
-                {/* Service selector for multiple services */}
-                {activeServices.length > 0 && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <span className="capitalize mr-1">
-                          {activeServices.map(service => getServiceName(service)).join(', ')}
-                        </span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {activeServices.map(service => (
-                        <DropdownMenuItem
-                          key={service}
-                          onClick={() => handleDisconnectService(service)}
-                          className="cursor-pointer text-red-500 hover:text-red-700"
-                        >
-                          Disconnect {getServiceName(service)}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
+            {/* Service selector for multiple services */}
+            {activeServices.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <span className="capitalize mr-1">
+                      {activeServices.map(service => getServiceName(service)).join(', ')}
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {activeServices.map(service => (
+                    <DropdownMenuItem
+                      key={service}
+                      onClick={() => handleDisconnectService(service)}
+                      className="cursor-pointer text-red-500 hover:text-red-700"
+                    >
+                      Disconnect {getServiceName(service)}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
 
-                <Button variant="outline" onClick={logout} size="sm">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Logout</span>
-                </Button>
-              </>
+            {/* Always show logout button when authenticated with Clerk */}
+            {isClerkAuthenticated && (
+              <Button variant="outline" onClick={logout} size="sm">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Logout</span>
+              </Button>
             )}
           </div>
         </div>

@@ -2,8 +2,10 @@ import "~/styles/globals.css";
 
 import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
+import { ClerkProvider } from '@clerk/nextjs';
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { DriveProvider } from "~/contexts/DriveContext";
+import { AuthWrapper } from "../components/AuthWrapper";
 
 export const metadata: Metadata = {
   title: "Create T3 App",
@@ -17,11 +19,15 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${GeistSans.variable}`} suppressHydrationWarning>
       <body>
-        <ThemeProvider defaultTheme="system" storageKey="ui-theme">
-          <DriveProvider>
-            {children}
-          </DriveProvider>
-        </ThemeProvider>
+        <ClerkProvider>
+          <ThemeProvider defaultTheme="system" storageKey="ui-theme">
+            <DriveProvider>
+              <AuthWrapper>
+                {children}
+              </AuthWrapper>
+            </DriveProvider>
+          </ThemeProvider>
+        </ClerkProvider>
       </body>
     </html>
   );

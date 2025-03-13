@@ -22,6 +22,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@clerk/nextjs": "^6.12.5",
     "@google-cloud/local-auth": "^3.0.1",
     "@libsql/client": "^0.9.0",
     "@microsoft/microsoft-graph-client": "^3.0.7",
