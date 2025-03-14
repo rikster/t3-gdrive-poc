@@ -7,12 +7,21 @@ import React from 'react';
 // Mock the DriveContext values
 const mockDriveContextValue: DriveContextType = {
   isAuthenticated: true,
+  isClerkAuthenticated: true,
   authenticateService: () => {}, // Mock function
   disconnectService: () => {}, // Mock function
   logout: () => {}, // Mock function
   currentService: 'googledrive',
   activeServices: ['googledrive', 'onedrive'],
-  isAuthenticating: false
+  isAuthenticating: false,
+  searchQuery: "",
+  setSearchQuery: () => {}, // Mock function
+  isSearching: false,
+  searchResults: [],
+  performSearch: async () => {}, // Mock function
+  clearSearch: () => {}, // Mock function
+  isRecursiveSearch: false,
+  openFile: async () => {} // Mock function
 };
 
 // Create a decorator with mocked DriveContext
