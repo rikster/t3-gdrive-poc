@@ -440,7 +440,9 @@ export function DriveUI({
   // Effect for recursive search results
   useEffect(() => {
     if (isRecursiveSearch && searchResults.length > 0) {
-      setFilteredItems(searchResults);
+      // Cast searchResults to DriveItem[] since they have compatible structure
+      const typedResults = searchResults as unknown as DriveItem[];
+      setFilteredItems(typedResults);
     }
   }, [searchResults, isRecursiveSearch]);
 
@@ -602,7 +604,14 @@ export function DriveUI({
               </div>
             ) : (
               path.map((item, index) => (
-                <div key={item.id} className="flex min-w-fit items-center">
+                <div
+                  key={
+                    item.service && "accountId" in item
+                      ? `${item.service}-${item.accountId}-${item.id}`
+                      : item.id
+                  }
+                  className="flex min-w-fit items-center"
+                >
                   {index > 0 && <span className="mx-2 text-gray-400">/</span>}
                   <button
                     onClick={() => handlePathClick(item, index)}
@@ -676,7 +685,7 @@ export function DriveUI({
                     ) : (
                       filteredItems.map((item) => (
                         <TableRow
-                          key={`${item.service}-${item.id}`}
+                          key={`${item.service}-${item.accountId ?? "default"}-${item.id}`}
                           className="group hover:bg-gray-100 dark:hover:bg-gray-800"
                         >
                           <TableCell className="py-3">

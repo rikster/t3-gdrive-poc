@@ -26,7 +26,18 @@ export interface DriveContextType {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   isSearching: boolean;
-  searchResults: Array<unknown>;
+  searchResults: Array<{
+    id: string;
+    name: string;
+    type: "file" | "folder";
+    size?: string;
+    modifiedAt: string;
+    parentId: string | null;
+    service?: string;
+    accountId?: string;
+    accountName?: string;
+    accountEmail?: string;
+  }>;
   performSearch: (query: string) => Promise<void>;
   clearSearch: () => void;
   isRecursiveSearch: boolean;
@@ -72,7 +83,20 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<Array<unknown>>([]);
+  const [searchResults, setSearchResults] = useState<
+    Array<{
+      id: string;
+      name: string;
+      type: "file" | "folder";
+      size?: string;
+      modifiedAt: string;
+      parentId: string | null;
+      service?: string;
+      accountId?: string;
+      accountName?: string;
+      accountEmail?: string;
+    }>
+  >([]);
   const [isRecursiveSearch, setIsRecursiveSearch] = useState(true);
 
   useEffect(() => {
@@ -234,7 +258,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         `/api/search?q=${encodeURIComponent(query)}`,
       );
       const data = await response.json();
-      setSearchResults(data.results || []);
+      setSearchResults(data.files || []);
     } catch (error) {
       console.error("Search error:", error);
     } finally {
