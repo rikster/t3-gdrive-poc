@@ -20,9 +20,9 @@ export type ServiceType = "google" | "onedrive" | "dropbox";
 // Get stored tokens for a specific service account
 export async function getStoredTokens(
   service: ServiceType = "google",
-  accountId: string = "default",
+  accountId = "default",
 ): Promise<TokenData | null> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const tokenCookie = cookieStore.get(`${service}_${accountId}_tokens`);
   if (!tokenCookie) return null;
 
@@ -37,9 +37,9 @@ export async function getStoredTokens(
 export async function storeTokens(
   tokens: TokenData,
   service: ServiceType = "google",
-  accountId: string = "default",
+  accountId = "default",
 ): Promise<void> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   cookieStore.set(`${service}_${accountId}_tokens`, JSON.stringify(tokens), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -50,7 +50,7 @@ export async function storeTokens(
 
 // Get list of all active service accounts
 export async function getActiveServiceAccounts(): Promise<ServiceAccount[]> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const allCookies = cookieStore.getAll();
   const accounts: ServiceAccount[] = [];
 
@@ -95,9 +95,9 @@ export async function getActiveServiceAccounts(): Promise<ServiceAccount[]> {
 export async function storeAccountMetadata(
   metadata: Partial<ServiceAccount>,
   service: ServiceType,
-  accountId: string = "default",
+  accountId = "default",
 ): Promise<void> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   cookieStore.set(
     `${service}_${accountId}_metadata`,
     JSON.stringify(metadata),
@@ -129,7 +129,7 @@ export async function clearTokens(
   service?: ServiceType,
   accountId?: string,
 ): Promise<void> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
   if (!service) {
     // Get all active accounts and clear them
@@ -159,7 +159,7 @@ export async function clearTokens(
 export async function updateExpiryDate(
   tokens: TokenData,
   service: ServiceType = "google",
-  accountId: string = "default",
+  accountId = "default",
 ): Promise<void> {
   // Set expiry date to current time + token_expires_in
   const updatedTokens = {
