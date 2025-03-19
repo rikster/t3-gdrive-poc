@@ -34,7 +34,6 @@ const defaultServices: Service[] = [
   { id: "google", name: "Google Drive" },
   { id: "onedrive", name: "OneDrive" },
   { id: "dropbox", name: "Dropbox" },
-  { id: "box", name: "Box" },
 ];
 
 export function AddServiceButton({
