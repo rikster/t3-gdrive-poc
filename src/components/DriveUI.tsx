@@ -1,13 +1,20 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { Button } from '~/components/ui/button';
-import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '~/components/ui/table';
-import { Upload, FileIcon, FolderIcon, LogOut, Search } from 'lucide-react';
-import { ThemeToggle } from './theme/ThemeToggle';
-import { AddServiceButton } from './AddServiceButton';
-import { useDrive } from '~/contexts/DriveContext';
-import { LoadingSpinner } from './ui/loading-spinner';
+import { useEffect, useState } from "react";
+import { Button } from "~/components/ui/button";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "~/components/ui/table";
+import { Upload, FileIcon, FolderIcon, LogOut, Search } from "lucide-react";
+import { ThemeToggle } from "./theme/ThemeToggle";
+import { AddServiceButton } from "./AddServiceButton";
+import { useDrive } from "~/contexts/DriveContext";
+import { LoadingSpinner } from "./ui/loading-spinner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,11 +25,14 @@ import {
 interface DriveItem {
   id: string;
   name: string;
-  type: 'file' | 'folder';
+  type: "file" | "folder";
   size?: string;
   modifiedAt: string;
   parentId: string | null;
   service?: string; // Added to track which service the item comes from
+  accountId?: string;
+  accountName?: string;
+  accountEmail?: string;
 }
 
 interface DriveUIProps {
@@ -31,15 +41,22 @@ interface DriveUIProps {
   error?: string | null;
 }
 
-export function DriveUI({ items: initialItems, loading: initialLoading, error: initialError }: DriveUIProps = {}) {
+export function DriveUI({
+  items: initialItems,
+  loading: initialLoading,
+  error: initialError,
+}: DriveUIProps = {}) {
   const {
     isAuthenticated,
     isClerkAuthenticated,
     authenticateService,
+    addNewAccount,
     disconnectService,
+    disconnectAccount,
     logout,
     currentService,
     activeServices,
+    serviceAccounts,
     isAuthenticating,
     searchQuery,
     setSearchQuery,
@@ -48,21 +65,36 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
     performSearch,
     clearSearch,
     isRecursiveSearch,
-    openFile
+    openFile,
   } = useDrive();
 
-  const [currentFolder, setCurrentFolder] = useState<string>('root');
+  const [currentFolder, setCurrentFolder] = useState<string>("root");
   const [items, setItems] = useState<DriveItem[]>(initialItems || []);
   const [filteredItems, setFilteredItems] = useState<DriveItem[]>([]);
-  const [path, setPath] = useState<DriveItem[]>([{
-    id: 'root', name: 'My Drives', type: 'folder', modifiedAt: '',
-    parentId: null
-  }]);
+  const [path, setPath] = useState<DriveItem[]>([
+    {
+      id: "root",
+      name: "My Drives",
+      type: "folder",
+      modifiedAt: "",
+      parentId: null,
+    },
+  ]);
   const [isLoading, setIsLoading] = useState(initialLoading ?? false);
   const [error, setError] = useState<string | null>(initialError ?? null);
-  const [serviceItems, setServiceItems] = useState<Record<string, DriveItem[]>>({});
-  const [currentFolderService, setCurrentFolderService] = useState<string | null>(null);
+  const [serviceItems, setServiceItems] = useState<Record<string, DriveItem[]>>(
+    {},
+  );
+  const [currentFolderService, setCurrentFolderService] = useState<
+    string | null
+  >(null);
+  const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
   const [searchInputValue, setSearchInputValue] = useState("");
+
+  // Add a map to track service account numbers
+  const [serviceAccountNumbers, setServiceAccountNumbers] = useState<
+    Record<string, Record<string, number>>
+  >({});
 
   useEffect(() => {
     if (initialItems) {
@@ -82,9 +114,15 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
     }
   }, [initialError]);
 
-  const fetchFilesFromService = async (service: string, folderId: string): Promise<DriveItem[]> => {
+  const fetchFilesFromService = async (
+    service: string,
+    folderId: string,
+    accountId: string = "default",
+  ): Promise<DriveItem[]> => {
     try {
-      const response = await fetch(`/api/${service}?folderId=${folderId}`);
+      const response = await fetch(
+        `/api/${service}?folderId=${folderId}&accountId=${accountId}`,
+      );
       const data = await response.json();
 
       if (data.url) {
@@ -98,9 +136,13 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
         return [];
       }
 
-      // Ensure data.files is always an array and add service property
+      // Ensure data.files is always an array and add service and accountId properties
       const files = Array.isArray(data.files)
-        ? data.files.map((file: DriveItem) => ({ ...file, service }))
+        ? data.files.map((file: DriveItem) => ({
+            ...file,
+            service,
+            accountId,
+          }))
         : [];
 
       return files;
@@ -111,7 +153,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
   };
 
   const fetchFiles = async (folderId: string) => {
-    if (initialItems || !isAuthenticated || activeServices.length === 0) {
+    if (initialItems || !isAuthenticated || serviceAccounts.length === 0) {
       return; // Don't fetch if we're using props or not authenticated
     }
 
@@ -121,13 +163,35 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
     try {
       let allFiles: DriveItem[] = [];
 
-      // If we're at root level or no specific service is set, fetch from all services
-      if (folderId === 'root' || !currentFolderService) {
+      // If we're at root level or no specific service is set, fetch from all accounts
+      if (folderId === "root" || (!currentFolderService && !currentAccountId)) {
         const serviceResults: Record<string, DriveItem[]> = {};
-        const allFilesPromises = activeServices.map(async (service) => {
-          const files = await fetchFilesFromService(service, 'root');
-          serviceResults[service] = files;
-          return files;
+
+        // Create a promise for each account
+        const allFilesPromises = serviceAccounts.map(async (account) => {
+          const files = await fetchFilesFromService(
+            account.service,
+            "root",
+            account.id,
+          );
+
+          // Group files by service for proper display
+          if (!serviceResults[account.service]) {
+            serviceResults[account.service] = [];
+          }
+
+          // Add account info to each file
+          const filesWithAccount = files.map((file) => ({
+            ...file,
+            accountName: account.name ?? getServiceName(account.service),
+            accountEmail: account.email,
+          }));
+
+          serviceResults[account.service] = [
+            ...serviceResults[account.service],
+            ...filesWithAccount,
+          ];
+          return filesWithAccount;
         });
 
         const results = await Promise.all(allFilesPromises);
@@ -135,10 +199,29 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
 
         // Update state with all services' files
         setServiceItems(serviceResults);
-        setCurrentFolderService(null); // At root, no specific service
-      } else {
-        // If we're in a specific folder, only fetch from that service
-        allFiles = await fetchFilesFromService(currentFolderService, folderId);
+        setCurrentFolderService(null);
+        setCurrentAccountId(null);
+      } else if (currentFolderService && currentAccountId) {
+        // If we're in a specific folder with a specific account, only fetch from that account
+        allFiles = await fetchFilesFromService(
+          currentFolderService,
+          folderId,
+          currentAccountId,
+        );
+
+        // Add account info to files
+        const account = serviceAccounts.find(
+          (a) =>
+            a.service === currentFolderService && a.id === currentAccountId,
+        );
+        if (account) {
+          allFiles = allFiles.map((file) => ({
+            ...file,
+            accountName: account.name ?? getServiceName(account.service),
+            accountEmail: account.email,
+          }));
+        }
+
         const serviceResults: Record<string, DriveItem[]> = {};
         serviceResults[currentFolderService] = allFiles;
         setServiceItems(serviceResults);
@@ -147,8 +230,8 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
       // Combine all files and sort them (folders first, then alphabetically)
       const sortedFiles = allFiles.sort((a, b) => {
         // First sort by type (folders first)
-        if (a.type === 'folder' && b.type !== 'folder') return -1;
-        if (a.type !== 'folder' && b.type === 'folder') return 1;
+        if (a.type === "folder" && b.type !== "folder") return -1;
+        if (a.type !== "folder" && b.type === "folder") return 1;
 
         // Then sort alphabetically by name
         return a.name.localeCompare(b.name);
@@ -167,7 +250,7 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
     if (isAuthenticated) {
       fetchFiles(currentFolder);
     }
-  }, [currentFolder, isAuthenticated, activeServices]);
+  }, [currentFolder, isAuthenticated, serviceAccounts, currentAccountId]);
 
   const handleFolderClick = async (item: DriveItem) => {
     // Update the current folder service when navigating into a folder
@@ -175,42 +258,83 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
       setCurrentFolderService(item.service);
     }
 
+    // Update the current account ID when navigating
+    if ("accountId" in item) {
+      setCurrentAccountId(item.accountId as string);
+    }
+
     setCurrentFolder(item.id);
-    setPath(prev => [...prev, item]);
+    setPath((prev) => [...prev, item]);
   };
 
   const handlePathClick = (item: DriveItem, index: number) => {
     // Reset service context if navigating to root
     if (index === 0) {
       setCurrentFolderService(null);
+      setCurrentAccountId(null);
     } else if (item.service) {
       setCurrentFolderService(item.service);
+
+      // Set account ID if available
+      if ("accountId" in item) {
+        setCurrentAccountId(item.accountId as string);
+      }
     }
 
     setCurrentFolder(item.id);
-    setPath(prev => prev.slice(0, index + 1));
+    setPath((prev) => prev.slice(0, index + 1));
   };
 
   const handleUpload = () => {
-    alert('Upload functionality would go here!');
+    alert("Upload functionality would go here!");
   };
 
   const handleServiceSelect = (serviceId: string) => {
     authenticateService(serviceId);
   };
 
+  const handleAddAccount = (serviceId: string) => {
+    addNewAccount(serviceId);
+  };
+
   const handleDisconnectService = (serviceId: string) => {
     // If we're currently viewing a folder from this service, go back to root
     if (currentFolderService === serviceId) {
       setCurrentFolderService(null);
-      setCurrentFolder('root');
-      setPath([{
-        id: 'root', name: 'My Drives', type: 'folder', modifiedAt: '',
-        parentId: null
-      }]);
+      setCurrentAccountId(null);
+      setCurrentFolder("root");
+      setPath([
+        {
+          id: "root",
+          name: "My Drives",
+          type: "folder",
+          modifiedAt: "",
+          parentId: null,
+        },
+      ]);
     }
 
     disconnectService(serviceId);
+  };
+
+  const handleDisconnectAccount = (serviceId: string, accountId: string) => {
+    // If we're currently viewing a folder from this account, go back to root
+    if (currentFolderService === serviceId && currentAccountId === accountId) {
+      setCurrentFolderService(null);
+      setCurrentAccountId(null);
+      setCurrentFolder("root");
+      setPath([
+        {
+          id: "root",
+          name: "My Drives",
+          type: "folder",
+          modifiedAt: "",
+          parentId: null,
+        },
+      ]);
+    }
+
+    disconnectAccount(serviceId, accountId);
   };
 
   const handleSwitchService = (serviceId: string) => {
@@ -225,39 +349,104 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
 
   // Display service name for files
   const getServiceName = (service?: string) => {
-    if (!service) return '';
+    if (!service) return "";
 
     switch (service) {
-      case 'google': return 'Google Drive';
-      case 'onedrive': return 'OneDrive';
-      case 'dropbox': return 'Dropbox';
-      case 'box': return 'Box';
-      default: return service;
+      case "google":
+        return "Google Drive";
+      case "onedrive":
+        return "OneDrive";
+      case "dropbox":
+        return "Dropbox";
+      case "box":
+        return "Box";
+      default:
+        return service;
     }
+  };
+
+  // Generate account numbers for each service when serviceAccounts changes
+  useEffect(() => {
+    if (serviceAccounts.length === 0) return;
+
+    const accountNumbers: Record<string, Record<string, number>> = {};
+
+    // Group accounts by service and assign sequential numbers for all accounts
+    serviceAccounts.forEach((account) => {
+      if (!accountNumbers[account.service]) {
+        accountNumbers[account.service] = {};
+      }
+
+      // Always number accounts, even if there's only one for a service
+      const accountsForService = serviceAccounts.filter(
+        (a) => a.service === account.service,
+      );
+
+      // Find the position of this account in the filtered array (this preserves original order)
+      const accountIndex = accountsForService.findIndex(
+        (a) => a.id === account.id,
+      );
+      accountNumbers[account.service][account.id] = accountIndex + 1;
+    });
+
+    setServiceAccountNumbers(accountNumbers);
+  }, [serviceAccounts]);
+
+  // Get account display name with numbering
+  const getAccountDisplayName = (item: DriveItem) => {
+    if (!item.service || !item.accountId) {
+      return getServiceName(item.service);
+    }
+
+    // Get the account number
+    const accountNumbers = serviceAccountNumbers[item.service];
+    const accountNumber =
+      accountNumbers && item.accountId
+        ? accountNumbers[item.accountId]
+        : undefined;
+
+    // Always show the account number if available
+    if (accountNumber) {
+      return `${accountNumber}`;
+    }
+
+    // Fallback if number not available for some reason
+    return (
+      item.accountEmail ?? item.accountName ?? getServiceName(item.service)
+    );
   };
 
   // Get the current breadcrumb path with service indicators
   const getBreadcrumbTitle = () => {
     if (currentFolderService && path.length > 1) {
+      const currentItem = path[path.length - 1];
+      const accountName =
+        "accountName" in currentItem ? currentItem.accountName : null;
+      const accountEmail =
+        "accountEmail" in currentItem ? currentItem.accountEmail : null;
+
       return (
         <span className="flex items-center">
-          <span className="text-xs mr-2 px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800">
-            {getServiceName(currentFolderService)}
+          <span className="mr-2 rounded bg-gray-100 px-2 py-0.5 text-xs dark:bg-gray-800">
+            {accountName ||
+              accountEmail ||
+              getServiceName(currentFolderService)}
           </span>
-          {path[path.length - 1].name}
+          {currentItem.name}
         </span>
       );
     }
-    return path[path.length - 1].name;
+
+    return path[path.length - 1]?.name || "My Drives";
   };
 
   // Handle search input changes
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target?.value || '';
+    const value = e.target?.value || "";
     setSearchInputValue(value);
 
     // For instant filtering of current folder contents
-    if (value.trim() === '') {
+    if (value.trim() === "") {
       clearSearch();
       setFilteredItems(items);
     } else {
@@ -276,14 +465,14 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
   // Effect for local filtering (non-recursive)
   useEffect(() => {
     if (!isRecursiveSearch) {
-      if (searchQuery.trim() === '') {
+      if (searchQuery.trim() === "") {
         setFilteredItems(items);
         return;
       }
 
       const query = searchQuery.toLowerCase();
-      const filtered = items.filter(item =>
-        item.name.toLowerCase().includes(query)
+      const filtered = items.filter((item) =>
+        item.name.toLowerCase().includes(query),
       );
       setFilteredItems(filtered);
     }
@@ -292,7 +481,9 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
   // Effect for recursive search results
   useEffect(() => {
     if (isRecursiveSearch && searchResults.length > 0) {
-      setFilteredItems(searchResults);
+      // Cast searchResults to DriveItem[] since they have compatible structure
+      const typedResults = searchResults as unknown as DriveItem[];
+      setFilteredItems(typedResults);
     }
   }, [searchResults, isRecursiveSearch]);
 
@@ -318,39 +509,48 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
       setFilteredItems([]);
       setSearchInputValue("");
       clearSearch();
-      setCurrentFolder('root');
-      setPath([{
-        id: 'root', name: 'My Drives', type: 'folder', modifiedAt: '',
-        parentId: null
-      }]);
+      setCurrentFolder("root");
+      setPath([
+        {
+          id: "root",
+          name: "My Drives",
+          type: "folder",
+          modifiedAt: "",
+          parentId: null,
+        },
+      ]);
       setCurrentFolderService(null);
+      setCurrentAccountId(null);
     }
   }, [isAuthenticated]);
 
   return (
-    <div className="h-screen flex flex-col bg-white dark:bg-gray-950 text-black dark:text-white">
+    <div className="flex h-screen flex-col bg-white text-black dark:bg-gray-950 dark:text-white">
       <div className="flex-none p-4 sm:p-6">
         {/* Header */}
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-6">
-          <div className="flex items-center justify-between w-full sm:w-auto">
+        <div className="mx-auto mb-6 flex max-w-6xl flex-col items-start justify-between gap-4 sm:flex-row sm:items-center sm:gap-0">
+          <div className="flex w-full items-center justify-between sm:w-auto">
             <h1 className="text-2xl font-bold">StrataFusion</h1>
             <div className="sm:hidden">
               <ThemeToggle />
             </div>
           </div>
-          <div className="flex items-center gap-4 w-full sm:w-auto">
+          <div className="flex w-full items-center gap-4 sm:w-auto">
             <div className="hidden sm:block">
               <ThemeToggle />
             </div>
 
             {/* Search input with form for submission */}
-            <form onSubmit={handleSearchSubmit} className="relative flex-grow max-w-xs">
+            <form
+              onSubmit={handleSearchSubmit}
+              className="relative max-w-xs flex-grow"
+            >
               <input
                 type="text"
                 placeholder="Search onscreen..."
                 value={searchInputValue}
                 onChange={handleSearchInputChange}
-                className="pl-8 pr-4 py-2 w-full border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700"
+                className="w-full rounded-md border py-2 pl-8 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800"
               />
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
               <button
@@ -364,12 +564,8 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
             {/* Always show Add Service button */}
             <AddServiceButton
               onServiceSelect={handleServiceSelect}
-              availableServices={[
-                { id: 'google', name: 'Google Drive' },
-                { id: 'onedrive', name: 'OneDrive' },
-                { id: 'dropbox', name: 'Dropbox' },
-                { id: 'box', name: 'Box' },
-              ]}
+              onAddAccount={handleAddAccount}
+              activeServices={activeServices}
             />
 
             {isAuthenticated && (
@@ -384,13 +580,15 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
-                    <span className="capitalize mr-1">
-                      {activeServices.map(service => getServiceName(service)).join(', ')}
+                    <span className="mr-1 capitalize">
+                      {activeServices
+                        .map((service) => getServiceName(service))
+                        .join(", ")}
                     </span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {activeServices.map(service => (
+                  {activeServices.map((service) => (
                     <DropdownMenuItem
                       key={service}
                       onClick={() => handleDisconnectService(service)}
@@ -414,8 +612,8 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
         </div>
 
         {/* Path navigation */}
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center text-sm mb-4 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700 py-1">
+        <div className="mx-auto max-w-6xl">
+          <div className="scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700 mb-4 flex items-center overflow-x-auto py-1 text-sm">
             {isRecursiveSearch ? (
               <div className="flex items-center">
                 <button
@@ -423,12 +621,18 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                     clearSearch();
                     setSearchInputValue("");
                     // Return to root folder
-                    setCurrentFolder('root');
-                    setPath([{
-                      id: 'root', name: 'My Drives', type: 'folder', modifiedAt: '',
-                      parentId: null
-                    }]);
+                    setCurrentFolder("root");
+                    setPath([
+                      {
+                        id: "root",
+                        name: "My Drives",
+                        type: "folder",
+                        modifiedAt: "",
+                        parentId: null,
+                      },
+                    ]);
                     setCurrentFolderService(null);
+                    setCurrentAccountId(null);
                   }}
                   className="text-blue-500 hover:underline"
                 >
@@ -441,18 +645,26 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
               </div>
             ) : (
               path.map((item, index) => (
-                <div key={item.id} className="flex items-center min-w-fit">
+                <div
+                  key={
+                    item.service && "accountId" in item
+                      ? `${item.service}-${item.accountId}-${item.id}`
+                      : item.id
+                  }
+                  className="flex min-w-fit items-center"
+                >
                   {index > 0 && <span className="mx-2 text-gray-400">/</span>}
                   <button
                     onClick={() => handlePathClick(item, index)}
-                    className={`hover:underline ${index === path.length - 1
-                      ? 'font-medium'
-                      : 'text-muted-foreground'
-                      }`}
+                    className={`hover:underline ${
+                      index === path.length - 1
+                        ? "font-medium"
+                        : "text-muted-foreground"
+                    }`}
                   >
                     {item.name}
                     {item.service && index === path.length - 1 && (
-                      <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+                      <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs dark:bg-gray-800">
                         {getServiceName(item.service)}
                       </span>
                     )}
@@ -465,50 +677,64 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
       </div>
 
       <div className="flex-grow overflow-auto">
-        <div className="max-w-6xl mx-auto">
-          <div className="bg-white dark:bg-gray-950 rounded-lg border dark:border-gray-800 overflow-hidden">
+        <div className="mx-auto max-w-6xl">
+          <div className="overflow-hidden rounded-lg border bg-white dark:border-gray-800 dark:bg-gray-950">
             {error && (
-              <div className="p-4 bg-red-50 dark:bg-red-900/20 border-b border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400">
+              <div className="border-b border-red-100 bg-red-50 p-4 text-red-600 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400">
                 <p>{error}</p>
               </div>
             )}
 
             <div className="relative">
-              {(isLoading || isAuthenticating || isSearching) ? (
+              {isLoading || isAuthenticating || isSearching ? (
                 <div className="py-16">
                   <LoadingSpinner />
-                  <p className="text-center text-muted-foreground">
-                    {isSearching ? 'Searching...' : 'Loading files...'}
+                  <p className="text-muted-foreground text-center">
+                    {isSearching ? "Searching..." : "Loading files..."}
                   </p>
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-gray-100 dark:hover:bg-gray-800">
-                      <TableHead className="w-[45%] bg-gray-50 dark:bg-gray-900 sticky top-0">Name</TableHead>
-                      <TableHead className="w-[20%] bg-gray-50 dark:bg-gray-900 sticky top-0 text-right">Modified</TableHead>
-                      <TableHead className="w-[15%] bg-gray-50 dark:bg-gray-900 sticky top-0 text-right">Size</TableHead>
-                      <TableHead className="w-[20%] bg-gray-50 dark:bg-gray-900 sticky top-0 text-right">Service</TableHead>
+                      <TableHead className="sticky top-0 w-[45%] bg-gray-50 dark:bg-gray-900">
+                        Name
+                      </TableHead>
+                      <TableHead className="sticky top-0 w-[20%] bg-gray-50 text-right dark:bg-gray-900">
+                        Modified
+                      </TableHead>
+                      <TableHead className="sticky top-0 w-[15%] bg-gray-50 text-right dark:bg-gray-900">
+                        Size
+                      </TableHead>
+                      <TableHead className="sticky top-0 w-[20%] bg-gray-50 text-right dark:bg-gray-900">
+                        Service
+                      </TableHead>
+                      <TableHead className="sticky top-0 w-[20%] bg-gray-50 text-right dark:bg-gray-900">
+                        Account
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredItems.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8">
+                        <TableCell colSpan={4} className="py-8 text-center">
                           {searchQuery
                             ? `No files match "${searchQuery}"`
-                            : 'No files found in this folder'}
+                            : "No files found in this folder"}
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredItems.map((item) => (
-                        <TableRow key={`${item.service}-${item.id}`} className="group hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <TableRow
+                          key={`${item.service}-${item.accountId ?? "default"}-${item.id}`}
+                          className="group hover:bg-gray-100 dark:hover:bg-gray-800"
+                        >
                           <TableCell className="py-3">
-                            <div className="flex items-start gap-2 min-h-[32px] w-full">
-                              {item.type === 'folder' ? (
+                            <div className="flex min-h-[32px] w-full items-start gap-2">
+                              {item.type === "folder" ? (
                                 <Button
                                   variant="ghost"
-                                  className="p-0 h-auto flex items-start justify-start text-left w-full"
+                                  className="flex h-auto w-full items-start justify-start p-0 text-left"
                                   onClick={() => {
                                     if (isRecursiveSearch) {
                                       // Clear search when navigating to a folder from search results
@@ -518,33 +744,44 @@ export function DriveUI({ items: initialItems, loading: initialLoading, error: i
                                     handleFolderClick(item);
                                   }}
                                 >
-                                  <FolderIcon className="h-5 w-5 mr-2 flex-shrink-0 text-blue-500 mt-1" />
-                                  <span className="hover:underline whitespace-normal break-words">{item.name}</span>
+                                  <FolderIcon className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-blue-500" />
+                                  <span className="whitespace-normal break-words hover:underline">
+                                    {item.name}
+                                  </span>
                                 </Button>
                               ) : (
                                 <Button
                                   variant="ghost"
-                                  className="p-0 h-auto flex items-start justify-start text-left w-full"
+                                  className="flex h-auto w-full items-start justify-start p-0 text-left"
                                   onClick={() => {
                                     if (item.service) {
-                                      openFile(item.id, item.service);
+                                      openFile(
+                                        item.id,
+                                        item.service,
+                                        item.accountId as string,
+                                      );
                                     }
                                   }}
                                 >
-                                  <FileIcon className="h-5 w-5 mr-2 flex-shrink-0 text-gray-500 mt-1" />
-                                  <span className="hover:underline whitespace-normal break-words">{item.name}</span>
+                                  <FileIcon className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-gray-500" />
+                                  <span className="whitespace-normal break-words hover:underline">
+                                    {item.name}
+                                  </span>
                                 </Button>
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
+                          <TableCell className="text-muted-foreground text-right">
                             {item.modifiedAt}
                           </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
-                            {item.size || '-'}
+                          <TableCell className="text-muted-foreground text-right">
+                            {item.size || "-"}
                           </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
+                          <TableCell className="text-muted-foreground text-right">
                             {getServiceName(item.service)}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-right">
+                            {getAccountDisplayName(item)}
                           </TableCell>
                         </TableRow>
                       ))
