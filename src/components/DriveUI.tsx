@@ -91,6 +91,11 @@ export function DriveUI({
   const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
   const [searchInputValue, setSearchInputValue] = useState("");
 
+  // Add a map to track service account numbers
+  const [serviceAccountNumbers, setServiceAccountNumbers] = useState<
+    Record<string, Record<string, number>>
+  >({});
+
   useEffect(() => {
     if (initialItems) {
       setItems(initialItems);
@@ -178,8 +183,7 @@ export function DriveUI({
           // Add account info to each file
           const filesWithAccount = files.map((file) => ({
             ...file,
-            accountName:
-              account.name || `${getServiceName(account.service)} Account`,
+            accountName: account.name ?? getServiceName(account.service),
             accountEmail: account.email,
           }));
 
@@ -213,8 +217,7 @@ export function DriveUI({
         if (account) {
           allFiles = allFiles.map((file) => ({
             ...file,
-            accountName:
-              account.name || `${getServiceName(account.service)} Account`,
+            accountName: account.name ?? getServiceName(account.service),
             accountEmail: account.email,
           }));
         }
@@ -362,17 +365,55 @@ export function DriveUI({
     }
   };
 
-  // Get account display name
+  // Generate account numbers for each service when serviceAccounts changes
+  useEffect(() => {
+    if (serviceAccounts.length === 0) return;
+
+    const accountNumbers: Record<string, Record<string, number>> = {};
+
+    // Group accounts by service and assign sequential numbers for all accounts
+    serviceAccounts.forEach((account) => {
+      if (!accountNumbers[account.service]) {
+        accountNumbers[account.service] = {};
+      }
+
+      // Always number accounts, even if there's only one for a service
+      const accountsForService = serviceAccounts.filter(
+        (a) => a.service === account.service,
+      );
+
+      // Find the position of this account in the filtered array (this preserves original order)
+      const accountIndex = accountsForService.findIndex(
+        (a) => a.id === account.id,
+      );
+      accountNumbers[account.service][account.id] = accountIndex + 1;
+    });
+
+    setServiceAccountNumbers(accountNumbers);
+  }, [serviceAccounts]);
+
+  // Get account display name with numbering
   const getAccountDisplayName = (item: DriveItem) => {
-    if ("accountName" in item && item.accountName) {
-      return item.accountName;
+    if (!item.service || !item.accountId) {
+      return getServiceName(item.service);
     }
 
-    if ("accountEmail" in item && item.accountEmail) {
-      return item.accountEmail;
+    // Get the account number
+    const accountNumbers = serviceAccountNumbers[item.service];
+    const accountNumber =
+      accountNumbers && item.accountId
+        ? accountNumbers[item.accountId]
+        : undefined;
+
+    // Always show the account number if available
+    if (accountNumber) {
+      return `${accountNumber}`;
     }
 
-    return getServiceName(item.service);
+    // Fallback if number not available for some reason
+    return (
+      item.accountEmail ?? item.accountName ?? getServiceName(item.service)
+    );
   };
 
   // Get the current breadcrumb path with service indicators
@@ -740,9 +781,7 @@ export function DriveUI({
                             {getServiceName(item.service)}
                           </TableCell>
                           <TableCell className="text-muted-foreground text-right">
-                            {item.accountName ||
-                              item.accountEmail ||
-                              getServiceName(item.service)}
+                            {getAccountDisplayName(item)}
                           </TableCell>
                         </TableRow>
                       ))
