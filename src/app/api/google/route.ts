@@ -17,7 +17,12 @@ function createOAuth2Client() {
   );
 }
 
-const SCOPES = ["https://www.googleapis.com/auth/drive.readonly"];
+// Constants for Google OAuth
+const SCOPES = [
+  "https://www.googleapis.com/auth/drive.readonly",
+  "https://www.googleapis.com/auth/userinfo.email",
+  "https://www.googleapis.com/auth/userinfo.profile",
+];
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -37,7 +42,7 @@ export async function GET(request: NextRequest) {
     if (storedTokens && !code) {
       try {
         oauth2Client.setCredentials(storedTokens);
-        return await listFiles(oauth2Client, folderId);
+        return await listFiles(oauth2Client, folderId, accountId);
       } catch (error) {
         console.error("Error with stored tokens:", error);
         // If there's an error with stored tokens, proceed with new auth
@@ -58,8 +63,8 @@ export async function GET(request: NextRequest) {
       access_type: "offline",
       scope: SCOPES,
       state,
-      // Force approval prompt to ensure we get a refresh token for new accounts
-      prompt: addAccount ? "consent" : undefined,
+      // Force approval prompt and account selection to ensure we get a refresh token for new accounts
+      prompt: addAccount ? "consent select_account" : undefined,
     });
 
     return Response.json({ url: authUrl });
@@ -90,8 +95,17 @@ export async function GET(request: NextRequest) {
       ? generateAccountId("google")
       : parsedState.accountId;
 
+    // Format tokens to match our TokenData interface
+    const formattedTokens: any = {
+      access_token: tokens.access_token || "",
+      refresh_token: tokens.refresh_token,
+      scope: tokens.scope || "",
+      token_type: tokens.token_type || "Bearer",
+      expiry_date: tokens.expiry_date || Date.now() + 3600 * 1000,
+    };
+
     // Store tokens with the appropriate accountId
-    await storeTokens(tokens, "google", finalAccountId);
+    await storeTokens(formattedTokens, "google", finalAccountId);
 
     // Get user info for this account to store with tokens
     const userInfo = await getUserInfo(oauth2Client);
@@ -116,27 +130,56 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Get user information from Google API
+// Get user info from Google
 async function getUserInfo(auth: any) {
   try {
+    // Use the oauth2 API which works with our scopes
     const oauth2 = google.oauth2({
       auth,
       version: "v2",
     });
 
-    const { data } = await oauth2.userinfo.get();
-    return {
-      email: data.email,
-      name: data.name,
-    };
+    try {
+      const { data } = await oauth2.userinfo.get();
+      return {
+        email: data.email || "",
+        name: data.name || "",
+      };
+    } catch (error) {
+      console.error("Error fetching user info from userinfo API:", error);
+      
+      // If we can't get the email from userinfo, try to get it from token info
+      if (auth && auth.credentials && auth.credentials.access_token) {
+        try {
+          const tokenInfo = await auth.getTokenInfo(auth.credentials.access_token);
+          if (tokenInfo && tokenInfo.email) {
+            return {
+              email: tokenInfo.email,
+              name: tokenInfo.email.split('@')[0],
+            };
+          }
+        } catch (tokenError) {
+          console.error("Error getting token info:", tokenError);
+        }
+      }
+      
+      // If all else fails, return empty values
+      return {
+        email: "",
+        name: "",
+      };
+    }
   } catch (error) {
-    console.error("Error fetching user info:", error);
-    return null;
+    console.error("Error in getUserInfo:", error);
+    return {
+      email: "",
+      name: "",
+    };
   }
 }
 
 // List files from Google Drive using the provided auth client
-async function listFiles(auth: any, folderId: string) {
+async function listFiles(auth: any, folderId: string, accountId: string = "default") {
   try {
     const drive = google.drive({ version: "v3", auth });
     const response = await drive.files.list({
@@ -149,6 +192,10 @@ async function listFiles(auth: any, folderId: string) {
       return Response.json({ files: [] });
     }
 
+    // Get user info to include with files
+    const userInfo = await getUserInfo(auth);
+    const userEmail = userInfo?.email || undefined;
+    
     // Transform the data to a format our UI expects
     const files = response.data.files.map((file) => ({
       id: file.id,
@@ -162,6 +209,8 @@ async function listFiles(auth: any, folderId: string) {
         file.mimeType === "application/vnd.google-apps.folder"
           ? "folder"
           : "file",
+      accountEmail: userEmail,
+      accountId: accountId,
     }));
 
     return Response.json({ files });

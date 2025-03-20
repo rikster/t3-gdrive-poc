@@ -120,6 +120,7 @@ export function DriveUI({
     accountId: string = "default",
   ): Promise<DriveItem[]> => {
     try {
+      console.log(`Fetching files from ${service} for folder ${folderId} and account ${accountId}`);
       const response = await fetch(
         `/api/${service}?folderId=${folderId}&accountId=${accountId}`,
       );
@@ -138,11 +139,16 @@ export function DriveUI({
 
       // Ensure data.files is always an array and add service and accountId properties
       const files = Array.isArray(data.files)
-        ? data.files.map((file: DriveItem) => ({
-            ...file,
-            service,
-            accountId,
-          }))
+        ? data.files.map((file: DriveItem) => {
+            console.log(`File from ${service}:`, file.name, "Email:", file.accountEmail);
+            return {
+              ...file,
+              service,
+              accountId,
+              // Preserve accountEmail if it exists in the API response
+              accountEmail: file.accountEmail || undefined,
+            };
+          })
         : [];
 
       return files;
@@ -252,19 +258,24 @@ export function DriveUI({
     }
   }, [currentFolder, isAuthenticated, serviceAccounts, currentAccountId]);
 
-  const handleFolderClick = async (item: DriveItem) => {
-    // Update the current folder service when navigating into a folder
-    if (item.service) {
-      setCurrentFolderService(item.service);
+  const handleFolderClick = (folder: DriveItem) => {
+    // Don't do anything if we're loading
+    if (isLoading) return;
+
+    // Update the path with the new folder
+    setPath((prevPath) => [...prevPath, folder]);
+
+    // Set the current folder ID
+    setCurrentFolder(folder.id);
+
+    // Set the service for this folder if it has one
+    if (folder.service) {
+      setCurrentFolderService(folder.service);
+      setCurrentAccountId(folder.accountId || null);
     }
 
-    // Update the current account ID when navigating
-    if ("accountId" in item) {
-      setCurrentAccountId(item.accountId as string);
-    }
-
-    setCurrentFolder(item.id);
-    setPath((prev) => [...prev, item]);
+    // Fetch the files for this folder
+    fetchFiles(folder.id);
   };
 
   const handlePathClick = (item: DriveItem, index: number) => {
@@ -363,6 +374,26 @@ export function DriveUI({
       default:
         return service;
     }
+  };
+
+  // Function to get service account email
+  const getServiceAccountEmail = (item: DriveItem) => {
+    // First try to get email directly from the item
+    if (item.accountEmail) {
+      return item.accountEmail;
+    }
+    
+    // Then try to get from serviceAccounts
+    const serviceAccount = serviceAccounts.find(
+      a => a.service === item.service && a.id === item.accountId
+    );
+    
+    if (serviceAccount?.email) {
+      return serviceAccount.email;
+    }
+    
+    // Finally, return empty string if no email found
+    return "";
   };
 
   // Generate account numbers for each service when serviceAccounts changes
@@ -707,10 +738,7 @@ export function DriveUI({
                         Size
                       </TableHead>
                       <TableHead className="sticky top-0 w-[20%] bg-gray-50 text-right dark:bg-gray-900">
-                        Service
-                      </TableHead>
-                      <TableHead className="sticky top-0 w-[20%] bg-gray-50 text-right dark:bg-gray-900">
-                        Account
+                        Service & Account
                       </TableHead>
                     </TableRow>
                   </TableHeader>
@@ -779,9 +807,7 @@ export function DriveUI({
                           </TableCell>
                           <TableCell className="text-muted-foreground text-right">
                             {getServiceName(item.service)}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-right">
-                            {getAccountDisplayName(item)}
+                            {getServiceAccountEmail(item) ? ` - ${getServiceAccountEmail(item)}` : ''}
                           </TableCell>
                         </TableRow>
                       ))
