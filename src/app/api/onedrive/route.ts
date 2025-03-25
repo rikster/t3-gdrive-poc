@@ -1,6 +1,6 @@
 import { type NextRequest } from 'next/server';
 import { env } from '~/env';
-import { getStoredTokens, storeTokens } from '~/lib/session';
+import { getStoredTokens, storeTokens, storeAccountMetadata, generateAccountId } from '~/lib/session';
 import { Client } from '@microsoft/microsoft-graph-client';
 
 // Microsoft Graph endpoint and auth URLs
@@ -11,17 +11,20 @@ const TOKEN_ENDPOINT = 'https://login.microsoftonline.com/common/oauth2/v2.0/tok
 // The scopes required for accessing OneDrive files
 const SCOPES = [
   'files.read',
-  'offline_access'
+  'offline_access',
+  'User.Read'
 ].join(' ');
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get('code');
-  const storedTokens = await getStoredTokens('onedrive');
+  const accountId = searchParams.get('accountId') || 'default';
+  const storedTokens = await getStoredTokens('onedrive', accountId);
   const folderId = searchParams.get('folderId') || 'root';
+  const addAccount = searchParams.get('addAccount') === 'true';
 
-  // If we have stored tokens, use them
-  if (storedTokens && !code) {
+  // If we have stored tokens and not adding a new account, use them
+  if (storedTokens && !code && !addAccount) {
     try {
       return await listFiles(storedTokens, folderId);
     } catch (error) {
@@ -32,11 +35,35 @@ export async function GET(request: NextRequest) {
 
   // If no code is provided, redirect to auth
   if (!code) {
-    const authUrl = `${AUTH_ENDPOINT}?client_id=${env.ONEDRIVE_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(env.ONEDRIVE_REDIRECT_URI)}&scope=${encodeURIComponent(SCOPES)}`;
+    // When adding a new account, force a prompt to select account
+    const promptParam = addAccount ? '&prompt=consent select_account' : '';
+    
+    // Generate a state parameter with the accountId to track this auth request
+    const state = JSON.stringify({
+      accountId: addAccount ? 'new' : accountId,
+      addAccount,
+    });
+    
+    const authUrl = `${AUTH_ENDPOINT}?client_id=${env.ONEDRIVE_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(env.ONEDRIVE_REDIRECT_URI)}&scope=${encodeURIComponent(SCOPES)}&state=${encodeURIComponent(state)}${promptParam}`;
     return Response.json({ url: authUrl });
   }
 
   try {
+    // Get the state parameter to identify the account this token is for
+    const state = searchParams.get('state');
+    let parsedState: { accountId: string; addAccount: boolean } = {
+      accountId,
+      addAccount: false,
+    };
+
+    if (state) {
+      try {
+        parsedState = JSON.parse(state);
+      } catch (e) {
+        console.error('Error parsing state:', e);
+      }
+    }
+
     // Exchange code for tokens
     const tokenResponse = await fetch(TOKEN_ENDPOINT, {
       method: 'POST',
@@ -67,8 +94,28 @@ export async function GET(request: NextRequest) {
       expiry_date: Date.now() + (tokenData.expires_in * 1000),
     };
     
+    // If this is a new account, generate a new accountId
+    const finalAccountId = parsedState.addAccount
+      ? generateAccountId('onedrive')
+      : parsedState.accountId;
+    
     // Store tokens for future use
-    await storeTokens(tokens, 'onedrive');
+    await storeTokens(tokens, 'onedrive', finalAccountId);
+    
+    // Get user info for this account to store with tokens
+    const userInfo = await getUserInfo(tokens.access_token);
+    if (userInfo) {
+      await storeAccountMetadata(
+        {
+          id: finalAccountId,
+          service: 'onedrive',
+          name: userInfo.name || 'OneDrive Account',
+          email: userInfo.email,
+        },
+        'onedrive',
+        finalAccountId,
+      );
+    }
 
     // Redirect to main page after successful authentication
     return Response.redirect(new URL('/', request.url));
@@ -127,5 +174,26 @@ async function listFiles(tokens: any, folderId: string) {
     console.error('Error listing OneDrive files:', error);
     // Even on error, return an empty files array rather than undefined
     return Response.json({ files: [], error: 'Failed to list OneDrive files' }, { status: 500 });
+  }
+}
+
+// Get user information from Microsoft Graph API
+async function getUserInfo(accessToken: string) {
+  try {
+    const client = Client.init({
+      authProvider: (done) => {
+        done(null, accessToken);
+      }
+    });
+    
+    const userInfo = await client.api('/me').select('displayName,mail,userPrincipalName').get();
+    
+    return {
+      email: userInfo.mail || userInfo.userPrincipalName,
+      name: userInfo.displayName
+    };
+  } catch (error) {
+    console.error('Error fetching OneDrive user info:', error);
+    return null;
   }
 }

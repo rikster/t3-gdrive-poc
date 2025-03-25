@@ -84,7 +84,7 @@ export async function getActiveServiceAccounts(): Promise<ServiceAccount[]> {
         id: accountId,
         service,
         ...(accountMetadata as Partial<ServiceAccount>),
-      });
+      } as ServiceAccount);
     }
   }
 
@@ -108,6 +108,23 @@ export async function storeAccountMetadata(
       maxAge: 60 * 60 * 24 * 7, // 1 week
     },
   );
+}
+
+// Get metadata for a specific service account
+export async function getAccountMetadata(
+  service: ServiceType,
+  accountId = "default",
+): Promise<Partial<ServiceAccount> | null> {
+  const cookieStore = await cookies();
+  const metadataCookie = cookieStore.get(`${service}_${accountId}_metadata`);
+  
+  if (!metadataCookie) return null;
+
+  try {
+    return JSON.parse(metadataCookie.value) as Partial<ServiceAccount>;
+  } catch {
+    return null;
+  }
 }
 
 // Get active services (for backward compatibility)

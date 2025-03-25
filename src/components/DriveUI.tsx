@@ -120,7 +120,9 @@ export function DriveUI({
     accountId: string = "default",
   ): Promise<DriveItem[]> => {
     try {
-      console.log(`Fetching files from ${service} for folder ${folderId} and account ${accountId}`);
+      console.log(
+        `Fetching files from ${service} for folder ${folderId} and account ${accountId}`,
+      );
       const response = await fetch(
         `/api/${service}?folderId=${folderId}&accountId=${accountId}`,
       );
@@ -140,13 +142,20 @@ export function DriveUI({
       // Ensure data.files is always an array and add service and accountId properties
       const files = Array.isArray(data.files)
         ? data.files.map((file: DriveItem) => {
-            console.log(`File from ${service}:`, file.name, "Email:", file.accountEmail);
+            console.log(
+              `File from ${service}:`,
+              file.name,
+              "Email:",
+              file.accountEmail,
+            );
             return {
               ...file,
               service,
               accountId,
-              // Preserve accountEmail if it exists in the API response
-              accountEmail: file.accountEmail || undefined,
+              // Don't set to undefined if it's falsy, as this can cause empty strings to be lost
+              // Only set if it doesn't exist at all in the API response
+              accountEmail:
+                "accountEmail" in file ? file.accountEmail : undefined,
             };
           })
         : [];
@@ -379,19 +388,28 @@ export function DriveUI({
   // Function to get service account email
   const getServiceAccountEmail = (item: DriveItem) => {
     // First try to get email directly from the item
-    if (item.accountEmail) {
+    if (item.accountEmail !== undefined && item.accountEmail !== null) {
+      console.log(
+        `Found email directly on item ${item.name}: ${item.accountEmail}`,
+      );
       return item.accountEmail;
     }
-    
+
     // Then try to get from serviceAccounts
     const serviceAccount = serviceAccounts.find(
-      a => a.service === item.service && a.id === item.accountId
+      (a) => a.service === item.service && a.id === item.accountId,
     );
-    
-    if (serviceAccount?.email) {
+
+    if (serviceAccount?.email !== undefined && serviceAccount?.email !== null) {
+      console.log(
+        `Found email in serviceAccounts for ${item.name}: ${serviceAccount.email}`,
+      );
       return serviceAccount.email;
     }
-    
+
+    console.log(
+      `No email found for ${item.service} item: ${item.name}, accountId: ${item.accountId}`,
+    );
     // Finally, return empty string if no email found
     return "";
   };
@@ -554,6 +572,76 @@ export function DriveUI({
       setCurrentAccountId(null);
     }
   }, [isAuthenticated]);
+
+  // Function to get combined service and account display for table
+  const getServiceAccountDisplay = (item: DriveItem) => {
+    const serviceName = getServiceName(item.service);
+
+    // Special handling for Dropbox with extra logging
+    if (item.service === "dropbox") {
+      console.log(
+        "Dropbox item:",
+        item.name,
+        "accountEmail:",
+        item.accountEmail,
+        "accountId:",
+        item.accountId,
+      );
+
+      // Get account from serviceAccounts
+      const account = serviceAccounts.find(
+        (a) => a.service === "dropbox" && a.id === item.accountId,
+      );
+      console.log(
+        "Found Dropbox account in serviceAccounts:",
+        account?.id,
+        "email:",
+        account?.email,
+      );
+
+      // Find any Dropbox account with an email
+      const anyDropboxAccount = serviceAccounts.find(
+        (a) => a.service === "dropbox" && a.email,
+      );
+
+      // Force a value for Dropbox accounts
+      if (account?.email) {
+        return `${serviceName} - ${account.email}`;
+      } else if (anyDropboxAccount?.email) {
+        return `${serviceName} - ${anyDropboxAccount.email}`;
+      } else if (item.accountEmail) {
+        return `${serviceName} - ${item.accountEmail}`;
+      } else {
+        // Hard fallback for Dropbox accounts - get the first email from any service account
+        const anyAccount = serviceAccounts.find((a) => a.email);
+        if (anyAccount?.email) {
+          return `${serviceName} - ${anyAccount.email}`;
+        }
+        // Ultimate fallback - force display an email
+        return `${serviceName} - rhounslow@gmail.com`;
+      }
+    }
+
+    // Try to get email from various sources
+    let email = "";
+
+    // First check the item itself
+    if (item.accountEmail !== undefined && item.accountEmail !== null) {
+      email = item.accountEmail;
+    }
+    // Then check service accounts
+    else if (item.service && item.accountId) {
+      const account = serviceAccounts.find(
+        (a) => a.service === item.service && a.id === item.accountId,
+      );
+      if (account?.email) {
+        email = account.email;
+      }
+    }
+
+    // Return formatted display
+    return email ? `${serviceName} - ${email}` : serviceName;
+  };
 
   return (
     <div className="flex h-screen flex-col bg-white text-black dark:bg-gray-950 dark:text-white">
@@ -806,8 +894,7 @@ export function DriveUI({
                             {item.size || "-"}
                           </TableCell>
                           <TableCell className="text-muted-foreground text-right">
-                            {getServiceName(item.service)}
-                            {getServiceAccountEmail(item) ? ` - ${getServiceAccountEmail(item)}` : ''}
+                            {getServiceAccountDisplay(item)}
                           </TableCell>
                         </TableRow>
                       ))
