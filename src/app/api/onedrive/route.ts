@@ -36,7 +36,8 @@ export async function GET(request: NextRequest) {
   // If no code is provided, redirect to auth
   if (!code) {
     // When adding a new account, force a prompt to select account
-    const promptParam = addAccount ? '&prompt=consent select_account' : '';
+    // Microsoft OAuth only supports single prompt value - select_account is sufficient to force account selection
+    const promptParam = addAccount ? '&prompt=select_account' : '';
     
     // Generate a state parameter with the accountId to track this auth request
     const state = JSON.stringify({
