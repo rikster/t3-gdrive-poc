@@ -48,7 +48,7 @@ export interface DriveContextType {
   ) => Promise<void>;
 }
 
-const DriveContext = createContext<DriveContextType>({
+export const DriveContext = createContext<DriveContextType>({
   isAuthenticated: false,
   isClerkAuthenticated: false,
   authenticateService: () => undefined,
