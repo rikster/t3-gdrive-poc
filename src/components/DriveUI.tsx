@@ -71,15 +71,6 @@ export function DriveUI({
   const [currentFolder, setCurrentFolder] = useState<string>("root");
   const [items, setItems] = useState<DriveItem[]>(initialItems || []);
   const [filteredItems, setFilteredItems] = useState<DriveItem[]>([]);
-  const [path, setPath] = useState<DriveItem[]>([
-    {
-      id: "root",
-      name: "My Drives",
-      type: "folder",
-      modifiedAt: "",
-      parentId: null,
-    },
-  ]);
   const [isLoading, setIsLoading] = useState(initialLoading ?? false);
   const [error, setError] = useState<string | null>(initialError ?? null);
   const [serviceItems, setServiceItems] = useState<Record<string, DriveItem[]>>(
@@ -203,7 +194,7 @@ export function DriveUI({
           }));
 
           serviceResults[account.service] = [
-            ...serviceResults[account.service],
+            ...(serviceResults[account.service] ?? []),
             ...filesWithAccount,
           ];
           return filesWithAccount;
@@ -263,7 +254,22 @@ export function DriveUI({
 
   useEffect(() => {
     if (isAuthenticated) {
-      fetchFiles(currentFolder);
+      // Create a reference to track if the component is still mounted
+      let isMounted = true;
+      
+      // Use an async function to handle fetch with proper cleanup
+      const doFetch = async () => {
+        if (isMounted) {
+          await fetchFiles(currentFolder);
+        }
+      };
+      
+      doFetch();
+      
+      // Cleanup function to prevent state updates after unmount
+      return () => {
+        isMounted = false;
+      };
     }
   }, [currentFolder, isAuthenticated, serviceAccounts, currentAccountId]);
 
@@ -271,38 +277,17 @@ export function DriveUI({
     // Don't do anything if we're loading
     if (isLoading) return;
 
-    // Update the path with the new folder
-    setPath((prevPath) => [...prevPath, folder]);
-
-    // Set the current folder ID
-    setCurrentFolder(folder.id);
-
-    // Set the service for this folder if it has one
+    // Set the service for this folder if it has one - do this first
     if (folder.service) {
       setCurrentFolderService(folder.service);
       setCurrentAccountId(folder.accountId || null);
     }
 
-    // Fetch the files for this folder
-    fetchFiles(folder.id);
-  };
-
-  const handlePathClick = (item: DriveItem, index: number) => {
-    // Reset service context if navigating to root
-    if (index === 0) {
-      setCurrentFolderService(null);
-      setCurrentAccountId(null);
-    } else if (item.service) {
-      setCurrentFolderService(item.service);
-
-      // Set account ID if available
-      if ("accountId" in item) {
-        setCurrentAccountId(item.accountId as string);
-      }
-    }
-
-    setCurrentFolder(item.id);
-    setPath((prev) => prev.slice(0, index + 1));
+    // Set the current folder ID - this should trigger the useEffect to fetch files
+    setCurrentFolder(folder.id);
+    
+    // No need to call fetchFiles directly as it will be triggered by the useEffect
+    // when currentFolder changes
   };
 
   const handleUpload = () => {
@@ -323,15 +308,6 @@ export function DriveUI({
       setCurrentFolderService(null);
       setCurrentAccountId(null);
       setCurrentFolder("root");
-      setPath([
-        {
-          id: "root",
-          name: "My Drives",
-          type: "folder",
-          modifiedAt: "",
-          parentId: null,
-        },
-      ]);
     }
 
     disconnectService(serviceId);
@@ -343,15 +319,6 @@ export function DriveUI({
       setCurrentFolderService(null);
       setCurrentAccountId(null);
       setCurrentFolder("root");
-      setPath([
-        {
-          id: "root",
-          name: "My Drives",
-          type: "folder",
-          modifiedAt: "",
-          parentId: null,
-        },
-      ]);
     }
 
     disconnectAccount(serviceId, accountId);
@@ -363,9 +330,6 @@ export function DriveUI({
       window.location.reload(); // Simple reload to ensure state is fresh
     }
   };
-
-  // Ensure items is always an array
-  const safeItems = Array.isArray(items) ? items : [];
 
   // Display service name for files
   const getServiceName = (service?: string) => {
@@ -395,7 +359,7 @@ export function DriveUI({
       return item.accountEmail;
     }
 
-    // Then try to get from serviceAccounts
+    // Then try to get from service accounts
     const serviceAccount = serviceAccounts.find(
       (a) => a.service === item.service && a.id === item.accountId,
     );
@@ -467,26 +431,7 @@ export function DriveUI({
 
   // Get the current breadcrumb path with service indicators
   const getBreadcrumbTitle = () => {
-    if (currentFolderService && path.length > 1) {
-      const currentItem = path[path.length - 1];
-      const accountName =
-        "accountName" in currentItem ? currentItem.accountName : null;
-      const accountEmail =
-        "accountEmail" in currentItem ? currentItem.accountEmail : null;
-
-      return (
-        <span className="flex items-center">
-          <span className="mr-2 rounded bg-gray-100 px-2 py-0.5 text-xs dark:bg-gray-800">
-            {accountName ||
-              accountEmail ||
-              getServiceName(currentFolderService)}
-          </span>
-          {currentItem.name}
-        </span>
-      );
-    }
-
-    return path[path.length - 1]?.name || "My Drives";
+    return "My Drives";
   };
 
   // Handle search input changes
@@ -507,7 +452,7 @@ export function DriveUI({
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchInputValue?.trim()) {
-      performSearch(searchInputValue);
+      void performSearch(searchInputValue);
     }
   };
 
@@ -559,15 +504,6 @@ export function DriveUI({
       setSearchInputValue("");
       clearSearch();
       setCurrentFolder("root");
-      setPath([
-        {
-          id: "root",
-          name: "My Drives",
-          type: "folder",
-          modifiedAt: "",
-          parentId: null,
-        },
-      ]);
       setCurrentFolderService(null);
       setCurrentAccountId(null);
     }
@@ -730,68 +666,6 @@ export function DriveUI({
           </div>
         </div>
 
-        {/* Path navigation */}
-        <div className="mx-auto max-w-6xl">
-          <div className="scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700 mb-4 flex items-center overflow-x-auto py-1 text-sm">
-            {isRecursiveSearch ? (
-              <div className="flex items-center">
-                <button
-                  onClick={() => {
-                    clearSearch();
-                    setSearchInputValue("");
-                    // Return to root folder
-                    setCurrentFolder("root");
-                    setPath([
-                      {
-                        id: "root",
-                        name: "My Drives",
-                        type: "folder",
-                        modifiedAt: "",
-                        parentId: null,
-                      },
-                    ]);
-                    setCurrentFolderService(null);
-                    setCurrentAccountId(null);
-                  }}
-                  className="text-blue-500 hover:underline"
-                >
-                  My Drives
-                </button>
-              </div>
-            ) : (
-              path.map((item, index) => (
-                <div
-                  key={
-                    item.service && "accountId" in item
-                      ? `${item.service}-${item.accountId}-${item.id}`
-                      : item.id
-                  }
-                  className="flex min-w-fit items-center"
-                >
-                  {index > 0 && <span className="mx-2 text-gray-400">/</span>}
-                  <button
-                    onClick={() => handlePathClick(item, index)}
-                    className={`hover:underline ${
-                      index === path.length - 1
-                        ? "font-medium"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {item.name}
-                    {item.service && index === path.length - 1 && (
-                      <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs dark:bg-gray-800">
-                        {getServiceName(item.service)}
-                      </span>
-                    )}
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex-grow overflow-auto">
         <div className="mx-auto max-w-6xl">
           <div className="overflow-hidden rounded-lg border bg-white dark:border-gray-800 dark:bg-gray-950">
             {error && (
@@ -799,7 +673,6 @@ export function DriveUI({
                 <p>{error}</p>
               </div>
             )}
-
             <div className="relative">
               {isLoading || isAuthenticating || isSearching ? (
                 <div className="py-16">
