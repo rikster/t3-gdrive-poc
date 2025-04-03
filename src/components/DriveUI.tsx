@@ -757,10 +757,6 @@ export function DriveUI({
                 >
                   My Drives
                 </button>
-                <span className="mx-2 text-gray-400">/</span>
-                <span className="font-medium">
-                  Search results for "{searchQuery}"
-                </span>
               </div>
             ) : (
               path.map((item, index) => (
