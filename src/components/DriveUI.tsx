@@ -576,17 +576,17 @@ export function DriveUI({
   };
 
   return (
-    <div className="flex h-screen flex-col bg-white text-black dark:bg-gray-950 dark:text-white">
+    <div className="flex flex-col min-h-screen text-black bg-white dark:bg-gray-950 dark:text-white">
       <div className="flex-none p-4 sm:p-6">
         {/* Header */}
-        <div className="mx-auto mb-6 flex max-w-6xl flex-col items-start justify-between gap-4 sm:flex-row sm:items-center sm:gap-0">
-          <div className="flex w-full items-center justify-between sm:w-auto">
+        <div className="flex flex-col gap-4 justify-between items-start mx-auto mb-6 max-w-6xl sm:flex-row sm:items-center sm:gap-0">
+          <div className="flex justify-between items-center w-full sm:w-auto">
             <h1 className="text-2xl font-bold">StrataFusion</h1>
             <div className="sm:hidden">
               <ThemeToggle />
             </div>
           </div>
-          <div className="flex w-full items-center gap-4 sm:w-auto">
+          <div className="flex gap-4 items-center w-full sm:w-auto">
             <div className="hidden sm:block">
               <ThemeToggle />
             </div>
@@ -623,9 +623,9 @@ export function DriveUI({
         </div>
 
         <div className="mx-auto max-w-6xl">
-          <div className="overflow-hidden rounded-lg border bg-white dark:border-gray-800 dark:bg-gray-950">
+          <div className="overflow-hidden bg-white rounded-lg border dark:border-gray-800 dark:bg-gray-950">
             {error && (
-              <div className="border-b border-red-100 bg-red-50 p-4 text-red-600 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400">
+              <div className="p-4 text-red-600 bg-red-50 border-b border-red-100 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400">
                 <p>{error}</p>
               </div>
             )}
@@ -633,7 +633,7 @@ export function DriveUI({
               {isLoading || isAuthenticating || isSearching ? (
                 <div className="py-16">
                   <LoadingSpinner />
-                  <p className="text-muted-foreground text-center">
+                  <p className="text-center text-muted-foreground">
                     {isSearching ? "Searching..." : "Loading files..."}
                   </p>
                 </div>
@@ -675,7 +675,7 @@ export function DriveUI({
                               {item.type === "folder" ? (
                                 <Button
                                   variant="ghost"
-                                  className="flex h-auto w-full items-start justify-start p-0 text-left"
+                                  className="flex justify-start items-start p-0 w-full h-auto text-left"
                                   onClick={() => {
                                     if (isRecursiveSearch) {
                                       // Clear search when navigating to a folder from search results
@@ -685,7 +685,7 @@ export function DriveUI({
                                     handleFolderClick(item);
                                   }}
                                 >
-                                  <FolderIcon className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-blue-500" />
+                                  <FolderIcon className="flex-shrink-0 mt-1 mr-2 w-5 h-5 text-blue-500" />
                                   <span className="whitespace-normal break-words hover:underline">
                                     {item.name}
                                   </span>
@@ -693,7 +693,7 @@ export function DriveUI({
                               ) : (
                                 <Button
                                   variant="ghost"
-                                  className="flex h-auto w-full items-start justify-start p-0 text-left"
+                                  className="flex justify-start items-start p-0 w-full h-auto text-left"
                                   onClick={() => {
                                     if (item.service) {
                                       openFile(
@@ -704,7 +704,7 @@ export function DriveUI({
                                     }
                                   }}
                                 >
-                                  <FileIcon className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-gray-500" />
+                                  <FileIcon className="flex-shrink-0 mt-1 mr-2 w-5 h-5 text-gray-500" />
                                   <span className="whitespace-normal break-words hover:underline">
                                     {item.name}
                                   </span>
@@ -712,13 +712,13 @@ export function DriveUI({
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-muted-foreground text-right">
+                          <TableCell className="text-right text-muted-foreground">
                             {item.modifiedAt}
                           </TableCell>
-                          <TableCell className="text-muted-foreground text-right">
+                          <TableCell className="text-right text-muted-foreground">
                             {item.size || "-"}
                           </TableCell>
-                          <TableCell className="text-muted-foreground text-right">
+                          <TableCell className="text-right text-muted-foreground">
                             {getServiceAccountDisplay(item)}
                           </TableCell>
                         </TableRow>
