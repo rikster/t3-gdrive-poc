@@ -10,17 +10,11 @@ import {
   TableRow,
   TableCell,
 } from "~/components/ui/table";
-import { Upload, FileIcon, FolderIcon, LogOut, Search } from "lucide-react";
-import { ThemeToggle } from "./theme/ThemeToggle";
-import { AddServiceButton } from "./AddServiceButton";
+import { FileIcon, FolderIcon } from "lucide-react";
+
+import { Header } from "./Header";
 import { useDrive } from "~/contexts/DriveContext";
 import { LoadingSpinner } from "./ui/loading-spinner";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 interface DriveItem {
   id: string;
@@ -48,12 +42,10 @@ export function DriveUI({
 }: DriveUIProps = {}) {
   const {
     isAuthenticated,
-    isClerkAuthenticated,
     authenticateService,
     addNewAccount,
     disconnectService,
     disconnectAccount,
-    logout,
     currentService,
     activeServices,
     serviceAccounts,
@@ -580,96 +572,27 @@ export function DriveUI({
   };
 
   return (
-    <div className="flex h-screen flex-col bg-white text-black dark:bg-gray-950 dark:text-white">
+    <div className="flex flex-col min-h-screen text-black bg-white dark:bg-gray-950 dark:text-white">
       <div className="flex-none p-4 sm:p-6">
         {/* Header */}
-        <div className="mx-auto mb-6 flex max-w-6xl flex-col items-start justify-between gap-4 sm:flex-row sm:items-center sm:gap-0">
-          <div className="flex w-full items-center justify-between sm:w-auto">
-            <h1 className="text-2xl font-bold">StrataFusion</h1>
-            <div className="sm:hidden">
-              <ThemeToggle />
-            </div>
-          </div>
-          <div className="flex w-full items-center gap-4 sm:w-auto">
-            <div className="hidden sm:block">
-              <ThemeToggle />
-            </div>
-
-            {/* Search input with form for submission */}
-            <form
-              onSubmit={handleSearchSubmit}
-              className="relative max-w-xs flex-grow"
-            >
-              <input
-                type="text"
-                placeholder="Search onscreen..."
-                value={searchInputValue}
-                onChange={handleSearchInputChange}
-                className="w-full rounded-md border py-2 pl-8 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800"
-              />
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-              <button
-                type="submit"
-                className="absolute right-2 top-2 text-xs text-blue-500 hover:text-blue-700"
-              >
-                Search All
-              </button>
-            </form>
-
-            {/* Always show Add Service button */}
-            <AddServiceButton
-              onServiceSelect={handleServiceSelect}
-              onAddAccount={handleAddAccount}
-              activeServices={activeServices}
-            />
-
-            {isAuthenticated && (
-              <Button onClick={handleUpload} className="w-full sm:w-auto">
-                <Upload className="mr-2 h-4 w-4" />
-                Upload
-              </Button>
-            )}
-
-            {/* Service selector for multiple services */}
-            {activeServices.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <span className="mr-1 capitalize">
-                      {activeServices
-                        .map((service) => getServiceName(service))
-                        .join(", ")}
-                    </span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {activeServices.map((service) => (
-                    <DropdownMenuItem
-                      key={service}
-                      onClick={() => handleDisconnectService(service)}
-                      className="cursor-pointer text-red-500 hover:text-red-700"
-                    >
-                      Disconnect {getServiceName(service)}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-
-            {/* Always show logout button when authenticated with Clerk */}
-            {isClerkAuthenticated && (
-              <Button variant="outline" onClick={logout} size="sm">
-                <LogOut className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Logout</span>
-              </Button>
-            )}
-          </div>
-        </div>
+        <Header 
+          isAuthenticated={isAuthenticated}
+          activeServices={activeServices}
+          serviceAccounts={serviceAccounts}
+          searchInputValue={searchInputValue}
+          onSearchInputChange={handleSearchInputChange}
+          onSearchSubmit={handleSearchSubmit}
+          onUpload={handleUpload}
+          onDisconnectService={handleDisconnectService}
+          onDisconnectAccount={handleDisconnectAccount}
+          onServiceSelect={handleServiceSelect}
+          onAddAccount={handleAddAccount}
+        />
 
         <div className="mx-auto max-w-6xl">
-          <div className="overflow-hidden rounded-lg border bg-white dark:border-gray-800 dark:bg-gray-950">
+          <div className="overflow-hidden bg-white rounded-lg border dark:border-gray-800 dark:bg-gray-950">
             {error && (
-              <div className="border-b border-red-100 bg-red-50 p-4 text-red-600 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400">
+              <div className="p-4 text-red-600 bg-red-50 border-b border-red-100 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400">
                 <p>{error}</p>
               </div>
             )}
@@ -677,7 +600,7 @@ export function DriveUI({
               {isLoading || isAuthenticating || isSearching ? (
                 <div className="py-16">
                   <LoadingSpinner />
-                  <p className="text-muted-foreground text-center">
+                  <p className="text-center text-muted-foreground">
                     {isSearching ? "Searching..." : "Loading files..."}
                   </p>
                 </div>
@@ -719,7 +642,7 @@ export function DriveUI({
                               {item.type === "folder" ? (
                                 <Button
                                   variant="ghost"
-                                  className="flex h-auto w-full items-start justify-start p-0 text-left"
+                                  className="flex justify-start items-start p-0 w-full h-auto text-left"
                                   onClick={() => {
                                     if (isRecursiveSearch) {
                                       // Clear search when navigating to a folder from search results
@@ -729,7 +652,7 @@ export function DriveUI({
                                     handleFolderClick(item);
                                   }}
                                 >
-                                  <FolderIcon className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-blue-500" />
+                                  <FolderIcon className="flex-shrink-0 mt-1 mr-2 w-5 h-5 text-blue-500" />
                                   <span className="whitespace-normal break-words hover:underline">
                                     {item.name}
                                   </span>
@@ -737,7 +660,7 @@ export function DriveUI({
                               ) : (
                                 <Button
                                   variant="ghost"
-                                  className="flex h-auto w-full items-start justify-start p-0 text-left"
+                                  className="flex justify-start items-start p-0 w-full h-auto text-left"
                                   onClick={() => {
                                     if (item.service) {
                                       openFile(
@@ -748,7 +671,7 @@ export function DriveUI({
                                     }
                                   }}
                                 >
-                                  <FileIcon className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-gray-500" />
+                                  <FileIcon className="flex-shrink-0 mt-1 mr-2 w-5 h-5 text-gray-500" />
                                   <span className="whitespace-normal break-words hover:underline">
                                     {item.name}
                                   </span>
@@ -756,13 +679,13 @@ export function DriveUI({
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-muted-foreground text-right">
+                          <TableCell className="text-right text-muted-foreground">
                             {item.modifiedAt}
                           </TableCell>
-                          <TableCell className="text-muted-foreground text-right">
+                          <TableCell className="text-right text-muted-foreground">
                             {item.size || "-"}
                           </TableCell>
-                          <TableCell className="text-muted-foreground text-right">
+                          <TableCell className="text-right text-muted-foreground">
                             {getServiceAccountDisplay(item)}
                           </TableCell>
                         </TableRow>
