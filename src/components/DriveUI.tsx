@@ -10,9 +10,10 @@ import {
   TableRow,
   TableCell,
 } from "~/components/ui/table";
-import { Upload, FileIcon, FolderIcon, LogOut, Search } from "lucide-react";
+import { Upload, FileIcon, FolderIcon, Search } from "lucide-react";
 import { ThemeToggle } from "./theme/ThemeToggle";
 import { AddServiceButton } from "./AddServiceButton";
+import { LogoutButton } from "./LogoutButton";
 import { useDrive } from "~/contexts/DriveContext";
 import { LoadingSpinner } from "./ui/loading-spinner";
 import {
@@ -48,12 +49,10 @@ export function DriveUI({
 }: DriveUIProps = {}) {
   const {
     isAuthenticated,
-    isClerkAuthenticated,
     authenticateService,
     addNewAccount,
     disconnectService,
     disconnectAccount,
-    logout,
     currentService,
     activeServices,
     serviceAccounts,
@@ -657,12 +656,7 @@ export function DriveUI({
             )}
 
             {/* Always show logout button when authenticated with Clerk */}
-            {isClerkAuthenticated && (
-              <Button variant="outline" onClick={logout} size="sm">
-                <LogOut className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Logout</span>
-              </Button>
-            )}
+            <LogoutButton />
           </div>
         </div>
 

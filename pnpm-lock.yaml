@@ -72,6 +72,9 @@ importers:
       '@chromatic-com/storybook':
         specifier: 3.2.4
         version: 3.2.4(react@18.3.1)(storybook@8.5.8(prettier@3.4.2))
+      '@storybook/addon-actions':
+        specifier: ^8.6.12
+        version: 8.6.12(storybook@8.5.8(prettier@3.4.2))
       '@storybook/addon-essentials':
         specifier: 8.5.8
         version: 8.5.8(@types/react@18.3.18)(storybook@8.5.8(prettier@3.4.2))
@@ -1698,6 +1701,11 @@ packages:
     resolution: {integrity: sha512-7J0NAz+WDw1NmvmKIh0Qr5cxgVRDPFC5fmngbDNxedk147TkwrgmqOypgEi/SAksHbTWxJclbimoqdcsNtWffA==}
     peerDependencies:
       storybook: ^8.5.8
+
+  '@storybook/addon-actions@8.6.12':
+    resolution: {integrity: sha512-B5kfiRvi35oJ0NIo53CGH66H471A3XTzrfaa6SxXEJsgxxSeKScG5YeXcCvLiZfvANRQ7QDsmzPUgg0o3hdMXw==}
+    peerDependencies:
+      storybook: ^8.6.12
 
   '@storybook/addon-backgrounds@8.5.8':
     resolution: {integrity: sha512-TsQFagQ95+d7H3/+qUZKI2B0SEK8iu6CV13cyry9Dm59nn2bBylFrwx4I3xDQUOWMiSF6QIRjCYzxKQ/jJ5OEg==}
@@ -6633,6 +6641,15 @@ snapshots:
   '@rushstack/eslint-patch@1.10.5': {}
 
   '@storybook/addon-actions@8.5.8(storybook@8.5.8(prettier@3.4.2))':
+    dependencies:
+      '@storybook/global': 5.0.0
+      '@types/uuid': 9.0.8
+      dequal: 2.0.3
+      polished: 4.3.1
+      storybook: 8.5.8(prettier@3.4.2)
+      uuid: 9.0.1
+
+  '@storybook/addon-actions@8.6.12(storybook@8.5.8(prettier@3.4.2))':
     dependencies:
       '@storybook/global': 5.0.0
       '@types/uuid': 9.0.8
