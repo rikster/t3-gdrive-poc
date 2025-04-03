@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, ChangeEvent } from "react";
+import Image from "next/image";
 import { SearchInput } from "./SearchInput";
 import { UploadButton } from "./UploadButton";
 import { ServiceSelector } from "./ServiceSelector";
@@ -45,7 +46,21 @@ export function Header({
   return (
     <div className="flex flex-col gap-4 justify-between items-start mx-auto mb-6 max-w-6xl sm:flex-row sm:items-center sm:gap-0">
       <div className="flex justify-between items-center w-full sm:w-auto">
-        <h1 className="text-2xl font-bold">StrataFusion</h1>
+        <div className="flex gap-3 items-center">
+          <div className="flex-shrink-0">
+            <Image 
+              src="/stratafusion_icon_256x256.ico" 
+              alt="StrataFusion Logo" 
+              width={48}
+              height={48}
+              className="w-12 h-12 rounded-md"
+            />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">StrataFusion</h1>
+            <p className="text-sm text-muted-foreground">Unified Cloud Storage</p>
+          </div>
+        </div>
         <div className="sm:hidden">
           <ThemeToggle />
         </div>
