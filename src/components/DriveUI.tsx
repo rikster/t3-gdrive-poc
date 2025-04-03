@@ -14,14 +14,9 @@ import { Upload, FileIcon, FolderIcon, Search } from "lucide-react";
 import { ThemeToggle } from "./theme/ThemeToggle";
 import { AddServiceButton } from "./AddServiceButton";
 import { LogoutButton } from "./LogoutButton";
+import { ServiceSelector } from "./ServiceSelector";
 import { useDrive } from "~/contexts/DriveContext";
 import { LoadingSpinner } from "./ui/loading-spinner";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 interface DriveItem {
   id: string;
@@ -630,30 +625,12 @@ export function DriveUI({
             )}
 
             {/* Service selector for multiple services */}
-            {activeServices.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <span className="mr-1 capitalize">
-                      {activeServices
-                        .map((service) => getServiceName(service))
-                        .join(", ")}
-                    </span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {activeServices.map((service) => (
-                    <DropdownMenuItem
-                      key={service}
-                      onClick={() => handleDisconnectService(service)}
-                      className="cursor-pointer text-red-500 hover:text-red-700"
-                    >
-                      Disconnect {getServiceName(service)}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+            <ServiceSelector 
+              activeServices={activeServices} 
+              serviceAccounts={serviceAccounts}
+              onDisconnectService={handleDisconnectService} 
+              onDisconnectAccount={handleDisconnectAccount}
+            />
 
             {/* Always show logout button when authenticated with Clerk */}
             <LogoutButton />
