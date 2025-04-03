@@ -10,11 +10,12 @@ import {
   TableRow,
   TableCell,
 } from "~/components/ui/table";
-import { Upload, FileIcon, FolderIcon, Search } from "lucide-react";
+import { FileIcon, FolderIcon, Search } from "lucide-react";
 import { ThemeToggle } from "./theme/ThemeToggle";
 import { AddServiceButton } from "./AddServiceButton";
 import { LogoutButton } from "./LogoutButton";
 import { ServiceSelector } from "./ServiceSelector";
+import { UploadButton } from "./UploadButton";
 import { useDrive } from "~/contexts/DriveContext";
 import { LoadingSpinner } from "./ui/loading-spinner";
 
@@ -618,10 +619,7 @@ export function DriveUI({
             />
 
             {isAuthenticated && (
-              <Button onClick={handleUpload} className="w-full sm:w-auto">
-                <Upload className="mr-2 h-4 w-4" />
-                Upload
-              </Button>
+              <UploadButton onClick={handleUpload} className="w-full sm:w-auto" />
             )}
 
             {/* Service selector for multiple services */}
