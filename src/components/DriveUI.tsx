@@ -10,12 +10,13 @@ import {
   TableRow,
   TableCell,
 } from "~/components/ui/table";
-import { FileIcon, FolderIcon, Search } from "lucide-react";
+import { FileIcon, FolderIcon } from "lucide-react";
 import { ThemeToggle } from "./theme/ThemeToggle";
 import { AddServiceButton } from "./AddServiceButton";
 import { LogoutButton } from "./LogoutButton";
 import { ServiceSelector } from "./ServiceSelector";
 import { UploadButton } from "./UploadButton";
+import { SearchInput } from "./SearchInput";
 import { useDrive } from "~/contexts/DriveContext";
 import { LoadingSpinner } from "./ui/loading-spinner";
 
@@ -590,26 +591,12 @@ export function DriveUI({
               <ThemeToggle />
             </div>
 
-            {/* Search input with form for submission */}
-            <form
-              onSubmit={handleSearchSubmit}
-              className="relative max-w-xs flex-grow"
-            >
-              <input
-                type="text"
-                placeholder="Search onscreen..."
-                value={searchInputValue}
-                onChange={handleSearchInputChange}
-                className="w-full rounded-md border py-2 pl-8 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800"
-              />
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-              <button
-                type="submit"
-                className="absolute right-2 top-2 text-xs text-blue-500 hover:text-blue-700"
-              >
-                Search All
-              </button>
-            </form>
+            {/* Search input component */}
+            <SearchInput
+              searchInputValue={searchInputValue}
+              onSearchInputChange={handleSearchInputChange}
+              onSearchSubmit={handleSearchSubmit}
+            />
 
             {/* Always show Add Service button */}
             <AddServiceButton
