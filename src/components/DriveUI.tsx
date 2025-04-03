@@ -11,12 +11,8 @@ import {
   TableCell,
 } from "~/components/ui/table";
 import { FileIcon, FolderIcon } from "lucide-react";
-import { ThemeToggle } from "./theme/ThemeToggle";
-import { AddServiceButton } from "./AddServiceButton";
-import { LogoutButton } from "./LogoutButton";
-import { ServiceSelector } from "./ServiceSelector";
-import { UploadButton } from "./UploadButton";
-import { SearchInput } from "./SearchInput";
+
+import { Header } from "./Header";
 import { useDrive } from "~/contexts/DriveContext";
 import { LoadingSpinner } from "./ui/loading-spinner";
 
@@ -579,48 +575,19 @@ export function DriveUI({
     <div className="flex flex-col min-h-screen text-black bg-white dark:bg-gray-950 dark:text-white">
       <div className="flex-none p-4 sm:p-6">
         {/* Header */}
-        <div className="flex flex-col gap-4 justify-between items-start mx-auto mb-6 max-w-6xl sm:flex-row sm:items-center sm:gap-0">
-          <div className="flex justify-between items-center w-full sm:w-auto">
-            <h1 className="text-2xl font-bold">StrataFusion</h1>
-            <div className="sm:hidden">
-              <ThemeToggle />
-            </div>
-          </div>
-          <div className="flex gap-4 items-center w-full sm:w-auto">
-            <div className="hidden sm:block">
-              <ThemeToggle />
-            </div>
-
-            {/* Search input component */}
-            <SearchInput
-              searchInputValue={searchInputValue}
-              onSearchInputChange={handleSearchInputChange}
-              onSearchSubmit={handleSearchSubmit}
-            />
-
-            {/* Always show Add Service button */}
-            <AddServiceButton
-              onServiceSelect={handleServiceSelect}
-              onAddAccount={handleAddAccount}
-              activeServices={activeServices}
-            />
-
-            {isAuthenticated && (
-              <UploadButton onClick={handleUpload} className="w-full sm:w-auto" />
-            )}
-
-            {/* Service selector for multiple services */}
-            <ServiceSelector 
-              activeServices={activeServices} 
-              serviceAccounts={serviceAccounts}
-              onDisconnectService={handleDisconnectService} 
-              onDisconnectAccount={handleDisconnectAccount}
-            />
-
-            {/* Always show logout button when authenticated with Clerk */}
-            <LogoutButton />
-          </div>
-        </div>
+        <Header 
+          isAuthenticated={isAuthenticated}
+          activeServices={activeServices}
+          serviceAccounts={serviceAccounts}
+          searchInputValue={searchInputValue}
+          onSearchInputChange={handleSearchInputChange}
+          onSearchSubmit={handleSearchSubmit}
+          onUpload={handleUpload}
+          onDisconnectService={handleDisconnectService}
+          onDisconnectAccount={handleDisconnectAccount}
+          onServiceSelect={handleServiceSelect}
+          onAddAccount={handleAddAccount}
+        />
 
         <div className="mx-auto max-w-6xl">
           <div className="overflow-hidden bg-white rounded-lg border dark:border-gray-800 dark:bg-gray-950">
