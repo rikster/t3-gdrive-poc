@@ -11,7 +11,6 @@ import {
 } from "~/components/ui/table";
 import { Header } from "./Header";
 import { DriveItemRow } from "./DriveItemRow";
-import { DriveBreadcrumb } from "./DriveBreadcrumb";
 import { useDrive } from "~/contexts/DriveContext";
 import { LoadingSpinner } from "./ui/loading-spinner";
 
@@ -60,7 +59,7 @@ export function DriveUI({
   } = useDrive();
 
   const [currentFolder, setCurrentFolder] = useState<string>("root");
-  const [items, setItems] = useState<DriveItem[]>(initialItems ?? []);
+  const [items, setItems] = useState<DriveItem[]>(initialItems || []);
   const [filteredItems, setFilteredItems] = useState<DriveItem[]>([]);
   const [isLoading, setIsLoading] = useState(initialLoading ?? false);
   const [error, setError] = useState<string | null>(initialError ?? null);
@@ -72,16 +71,6 @@ export function DriveUI({
   >(null);
   const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
   const [searchInputValue, setSearchInputValue] = useState("");
-
-  // State for breadcrumb navigation
-  const [breadcrumbPath, setBreadcrumbPath] = useState<
-    Array<{
-      id: string;
-      name: string;
-      service?: string;
-      accountId?: string;
-    }>
-  >([]);
 
   // Add a map to track service account numbers
   const [serviceAccountNumbers, setServiceAccountNumbers] = useState<
@@ -118,52 +107,28 @@ export function DriveUI({
       const response = await fetch(
         `/api/${service}?folderId=${folderId}&accountId=${accountId}`,
       );
-
-      // Handle HTTP errors
-      if (!response.ok) {
-        console.error(
-          `HTTP error ${response.status} fetching ${service} files`,
-        );
-        // If authentication is needed, we might need to redirect
-        if (response.status === 401) {
-          // Try to re-authenticate
-          authenticateService(service);
-          return [];
-        }
-        return [];
-      }
-
       const data = await response.json();
 
       if (data.url) {
-        // Need to authenticate - redirect to auth URL
-        console.log(`Authentication required for ${service}, redirecting...`);
+        // Need to authenticate
         window.location.href = data.url;
         return [];
       }
 
       if (data.error) {
         console.error(`Error fetching ${service} files:`, data.error);
-
-        // If it's an authentication error or we need auth, handle it
-        if (
-          data.needsAuth ||
-          data.error.includes("authentication") ||
-          data.error.includes("token") ||
-          data.error.includes("auth")
-        ) {
-          console.log(
-            `Authentication issue detected for ${service}, re-authenticating...`,
-          );
-          authenticateService(service);
-          return [];
-        }
         return [];
       }
 
       // Ensure data.files is always an array and add service and accountId properties
       const files = Array.isArray(data.files)
-        ? data.files.map((file: any) => {
+        ? data.files.map((file: DriveItem) => {
+            console.log(
+              `File from ${service}:`,
+              file.name,
+              "Email:",
+              file.accountEmail,
+            );
             return {
               ...file,
               service,
@@ -305,63 +270,14 @@ export function DriveUI({
     // Set the service for this folder if it has one - do this first
     if (folder.service) {
       setCurrentFolderService(folder.service);
-      setCurrentAccountId(folder.accountId ?? null);
+      setCurrentAccountId(folder.accountId || null);
     }
 
     // Set the current folder ID - this should trigger the useEffect to fetch files
     setCurrentFolder(folder.id);
 
-    // Update breadcrumb path
-    if (folder.id === "root") {
-      // If navigating to root, clear the breadcrumb path
-      setBreadcrumbPath([]);
-    } else {
-      // If the folder is already in the breadcrumb path, truncate the path to that point
-      const existingIndex = breadcrumbPath.findIndex(
-        (item) => item.id === folder.id,
-      );
-
-      if (existingIndex >= 0) {
-        // Folder exists in path, truncate to that point
-        setBreadcrumbPath(breadcrumbPath.slice(0, existingIndex + 1));
-      } else {
-        // Add the folder to the breadcrumb path
-        setBreadcrumbPath([
-          ...breadcrumbPath,
-          {
-            id: folder.id,
-            name: folder.name,
-            service: folder.service,
-            accountId: folder.accountId,
-          },
-        ]);
-      }
-    }
-
     // No need to call fetchFiles directly as it will be triggered by the useEffect
     // when currentFolder changes
-  };
-
-  // Handler for breadcrumb navigation
-  const handleBreadcrumbClick = (item: {
-    id: string;
-    name: string;
-    service?: string;
-    accountId?: string;
-  }) => {
-    // Create a DriveItem from the breadcrumb item
-    const folder: DriveItem = {
-      id: item.id,
-      name: item.name,
-      type: "folder",
-      modifiedAt: "", // Not needed for navigation
-      parentId: null, // Not needed for navigation
-      service: item.service,
-      accountId: item.accountId,
-    };
-
-    // Use the existing folder click handler
-    handleFolderClick(folder);
   };
 
   const handleUpload = () => {
@@ -512,37 +428,6 @@ export function DriveUI({
     }
   }, [currentFolder]);
 
-  // Update breadcrumb path when folder changes
-  useEffect(() => {
-    // If we're at root, clear the breadcrumb path
-    if (currentFolder === "root") {
-      setBreadcrumbPath([]);
-    } else {
-      // If the current folder is not in the breadcrumb path, we need to fetch its details
-      const folderInPath = breadcrumbPath.find(
-        (item) => item.id === currentFolder,
-      );
-      if (!folderInPath) {
-        // Find the folder in the current items
-        const currentFolderItem = items.find(
-          (item) => item.id === currentFolder && item.type === "folder",
-        );
-        if (currentFolderItem) {
-          // Add it to the breadcrumb path
-          setBreadcrumbPath([
-            ...breadcrumbPath,
-            {
-              id: currentFolderItem.id,
-              name: currentFolderItem.name,
-              service: currentFolderItem.service,
-              accountId: currentFolderItem.accountId,
-            },
-          ]);
-        }
-      }
-    }
-  }, [currentFolder, items, breadcrumbPath]);
-
   // Clear items and filteredItems when logging out
   useEffect(() => {
     if (!isAuthenticated) {
@@ -553,9 +438,8 @@ export function DriveUI({
       setCurrentFolder("root");
       setCurrentFolderService(null);
       setCurrentAccountId(null);
-      setBreadcrumbPath([]);
     }
-  }, [isAuthenticated, clearSearch]);
+  }, [isAuthenticated]);
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-black dark:bg-gray-950 dark:text-white">
@@ -576,13 +460,6 @@ export function DriveUI({
         />
 
         <div className="mx-auto max-w-6xl">
-          {/* Breadcrumb navigation */}
-          <DriveBreadcrumb
-            items={breadcrumbPath}
-            currentFolder={currentFolder}
-            onNavigate={handleBreadcrumbClick}
-            className="mb-2"
-          />
           <div className="overflow-hidden rounded-lg border bg-white dark:border-gray-800 dark:bg-gray-950">
             {error && (
               <div className="border-b border-red-100 bg-red-50 p-4 text-red-600 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400">

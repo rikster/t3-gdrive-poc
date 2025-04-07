@@ -1,18 +1,15 @@
 "use client";
 
-import React from "react";
-import { Button } from "~/components/ui/button";
+import React, { useState, useCallback, useMemo } from "react";
+import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface ServiceAccount {
   id: string;
@@ -50,117 +47,170 @@ export function ServiceSelector({
   onDisconnectService,
   onDisconnectAccount,
 }: ServiceSelectorProps) {
+  // State for dialog
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Memoize the service names to prevent unnecessary re-renders
+  const serviceNames = useMemo(() => {
+    return activeServices.map((service) => getServiceName(service)).join(", ");
+  }, [activeServices]);
+
+  // Group accounts by service - memoized to prevent recalculation on every render
+  const accountsByService = useMemo(() => {
+    return activeServices.reduce<Record<string, ServiceAccount[]>>(
+      (acc, service) => {
+        acc[service] = serviceAccounts.filter(
+          (account) => account.service === service,
+        );
+        return acc;
+      },
+      {},
+    );
+  }, [activeServices, serviceAccounts]);
+
+  // Handlers with useCallback to prevent unnecessary re-renders
+  const handleOpenDialog = useCallback(() => {
+    setIsOpen(true);
+  }, []);
+
+  const handleCloseDialog = useCallback(() => {
+    setIsOpen(false);
+  }, []);
+
+  const handleDisconnectService = useCallback(
+    (service: string) => {
+      if (
+        window.confirm(
+          `Are you sure you want to disconnect ${getServiceName(service)}?`,
+        )
+      ) {
+        onDisconnectService(service);
+        setIsOpen(false);
+      }
+    },
+    [onDisconnectService],
+  );
+
+  const handleDisconnectAccount = useCallback(
+    (service: string, accountId: string, accountName: string) => {
+      if (
+        window.confirm(`Are you sure you want to disconnect ${accountName}?`)
+      ) {
+        onDisconnectAccount(service, accountId);
+        setIsOpen(false);
+      }
+    },
+    [onDisconnectAccount],
+  );
+
   if (activeServices.length === 0) {
     return null;
   }
 
-  // Group accounts by service
-  const accountsByService = activeServices.reduce<
-    Record<string, ServiceAccount[]>
-  >((acc, service) => {
-    acc[service] = serviceAccounts.filter(
-      (account) => account.service === service,
-    );
-    return acc;
-  }, {});
-
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm">
-          <span className="mr-1 capitalize">
-            {activeServices
-              .map((service) => getServiceName(service))
-              .join(", ")}
-          </span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Connected Services</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {activeServices.map((service) => {
-          const accounts = accountsByService[service] ?? [];
-          const hasMultipleAccounts = accounts.length > 1;
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleOpenDialog}
+        title="Manage connected services"
+      >
+        <span className="mr-1 capitalize">{serviceNames}</span>
+      </Button>
 
-          return (
-            <React.Fragment key={service}>
-              {hasMultipleAccounts ? (
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <span>{getServiceName(service)}</span>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-56 bg-white dark:bg-gray-950">
-                    <DropdownMenuLabel>Accounts</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {accounts.map((account) => (
-                      <DropdownMenuItem
-                        key={account.id}
-                        onClick={() => {
-                          // Confirm before disconnecting
-                          if (
-                            window.confirm(
-                              `Are you sure you want to disconnect ${account.email ?? account.name ?? `Account ${account.id}`}?`,
-                            )
-                          ) {
-                            onDisconnectAccount(service, account.id);
-                          }
-                        }}
-                        className="cursor-pointer text-red-500 hover:text-red-700"
-                      >
-                        Disconnect{" "}
-                        {account.email ??
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Connected Services</DialogTitle>
+            <DialogDescription>
+              Manage your connected cloud storage services
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            {activeServices.map((service) => {
+              const accounts = accountsByService[service] ?? [];
+              const hasMultipleAccounts = accounts.length > 1;
+
+              return (
+                <div key={service} className="mb-4">
+                  <h3 className="mb-2 text-lg font-medium">
+                    {getServiceName(service)}
+                  </h3>
+
+                  {hasMultipleAccounts ? (
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium text-gray-500 dark:text-gray-300">
+                        Accounts
+                      </h4>
+                      {accounts.map((account) => {
+                        const accountName =
+                          account.email ??
                           account.name ??
-                          `Account ${account.id}`}
-                      </DropdownMenuItem>
-                    ))}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => {
-                        // Confirm before disconnecting all accounts
-                        if (
-                          window.confirm(
-                            `Are you sure you want to disconnect all ${getServiceName(service)} accounts?`,
-                          )
-                        ) {
-                          onDisconnectService(service);
-                        }
-                      }}
-                      className="cursor-pointer text-red-500 hover:text-red-700"
-                    >
-                      Disconnect all {getServiceName(service)} accounts
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              ) : (
-                <DropdownMenuItem
-                  onClick={() => {
-                    // Confirm before disconnecting
-                    const accountInfo =
-                      accounts.length === 1 && accounts[0]?.email
-                        ? ` (${accounts[0].email})`
-                        : "";
-                    if (
-                      window.confirm(
-                        `Are you sure you want to disconnect ${getServiceName(service)}${accountInfo}?`,
-                      )
-                    ) {
-                      onDisconnectService(service);
-                    }
-                  }}
-                  className="cursor-pointer text-red-500 hover:text-red-700"
-                >
-                  Disconnect {getServiceName(service)}
-                  {accounts.length === 1 && accounts[0]?.email && (
-                    <span className="ml-1 text-xs opacity-70">
-                      ({accounts[0].email})
-                    </span>
+                          `Account ${account.id}`;
+                        return (
+                          <div
+                            key={account.id}
+                            className="flex items-center justify-between"
+                          >
+                            <span>{accountName}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                handleDisconnectAccount(
+                                  service,
+                                  account.id,
+                                  accountName,
+                                )
+                              }
+                              className="text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
+                            >
+                              Disconnect
+                            </Button>
+                          </div>
+                        );
+                      })}
+                      <div className="pt-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDisconnectService(service)}
+                          className="text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
+                        >
+                          Disconnect all {getServiceName(service)} accounts
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      {accounts.length === 1 && accounts[0]?.email && (
+                        <span className="text-sm text-gray-500 dark:text-gray-300">
+                          {accounts[0].email}
+                        </span>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDisconnectService(service)}
+                        className="text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
+                      >
+                        Disconnect {getServiceName(service)}
+                      </Button>
+                    </div>
                   )}
-                </DropdownMenuItem>
-              )}
-            </React.Fragment>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
+                </div>
+              );
+            })}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseDialog}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

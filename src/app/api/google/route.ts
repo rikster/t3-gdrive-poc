@@ -41,37 +41,11 @@ export async function GET(request: NextRequest) {
     // If we have stored tokens and no code is provided, use the stored tokens
     if (storedTokens && !code) {
       try {
-        // Check if refresh token exists
-        if (!storedTokens.refresh_token) {
-          console.error("No refresh token found for account:", accountId);
-          // Generate auth URL to get a new refresh token
-          const authUrl = oauth2Client.generateAuthUrl({
-            access_type: "offline",
-            scope: SCOPES,
-            state: JSON.stringify({ accountId, addAccount: false }),
-            prompt: "consent", // Force consent to get a new refresh token
-          });
-          return Response.json({
-            url: authUrl,
-            error: "Authentication required",
-          });
-        }
-
         oauth2Client.setCredentials(storedTokens);
         return await listFiles(oauth2Client, folderId, accountId);
       } catch (error) {
         console.error("Error with stored tokens:", error);
         // If there's an error with stored tokens, proceed with new auth
-        const authUrl = oauth2Client.generateAuthUrl({
-          access_type: "offline",
-          scope: SCOPES,
-          state: JSON.stringify({ accountId, addAccount: false }),
-          prompt: "consent", // Force consent to get a new refresh token
-        });
-        return Response.json({
-          url: authUrl,
-          error: "Authentication required",
-        });
       }
     }
   }
@@ -114,26 +88,6 @@ export async function GET(request: NextRequest) {
 
     // Exchange code for tokens
     const { tokens } = await oauth2Client.getToken(code);
-
-    // Check if we got a refresh token
-    if (!tokens.refresh_token) {
-      console.error("No refresh token received from Google OAuth");
-      // Try again with force consent
-      const authUrl = oauth2Client.generateAuthUrl({
-        access_type: "offline",
-        scope: SCOPES,
-        state: JSON.stringify({
-          accountId: parsedState.accountId,
-          addAccount: parsedState.addAccount,
-        }),
-        prompt: "consent", // Force consent to get a refresh token
-      });
-      return Response.json({
-        url: authUrl,
-        error: "No refresh token received. Please try again.",
-      });
-    }
-
     oauth2Client.setCredentials(tokens);
 
     // If this is a new account, generate a new accountId
@@ -149,8 +103,6 @@ export async function GET(request: NextRequest) {
       token_type: tokens.token_type || "Bearer",
       expiry_date: tokens.expiry_date || Date.now() + 3600 * 1000,
     };
-
-    console.log("Received refresh token:", tokens.refresh_token ? "Yes" : "No");
 
     // Store tokens with the appropriate accountId
     await storeTokens(formattedTokens, "google", finalAccountId);
@@ -235,22 +187,7 @@ async function listFiles(
   accountId: string = "default",
 ) {
   try {
-    // Verify that auth has a refresh token
-    if (!auth.credentials.refresh_token) {
-      console.error("No refresh token in credentials for account:", accountId);
-      // Return an error response that will trigger re-authentication
-      return Response.json(
-        {
-          error: "No refresh token is set. Please re-authenticate.",
-          needsAuth: true,
-        },
-        { status: 401 },
-      );
-    }
-
     const drive = google.drive({ version: "v3", auth });
-
-    // Get files from Google Drive
     const response = await drive.files.list({
       q: folderId === "root" ? "'root' in parents" : `'${folderId}' in parents`,
       pageSize: 100,
