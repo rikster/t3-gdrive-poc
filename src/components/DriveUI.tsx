@@ -128,6 +128,7 @@ export function DriveUI({
         if (response.status === 401) {
           // Try to re-authenticate
           authenticateService(service);
+          return [];
         }
         return [];
       }
@@ -135,20 +136,27 @@ export function DriveUI({
       const data = await response.json();
 
       if (data.url) {
-        // Need to authenticate
+        // Need to authenticate - redirect to auth URL
+        console.log(`Authentication required for ${service}, redirecting...`);
         window.location.href = data.url;
         return [];
       }
 
       if (data.error) {
         console.error(`Error fetching ${service} files:`, data.error);
-        // If it's an authentication error, try to re-authenticate
+
+        // If it's an authentication error or we need auth, handle it
         if (
+          data.needsAuth ||
           data.error.includes("authentication") ||
           data.error.includes("token") ||
           data.error.includes("auth")
         ) {
+          console.log(
+            `Authentication issue detected for ${service}, re-authenticating...`,
+          );
           authenticateService(service);
+          return [];
         }
         return [];
       }

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "light" | "dark" | "system";
 
@@ -28,8 +28,10 @@ export function ThemeProvider({
   storageKey = "theme",
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (typeof window !== "undefined" ? (localStorage.getItem(storageKey) as Theme) || defaultTheme : defaultTheme)
+  const [theme, setTheme] = useState<Theme>(() =>
+    typeof window !== "undefined"
+      ? (localStorage.getItem(storageKey) as Theme) || defaultTheme
+      : defaultTheme,
   );
 
   useEffect(() => {
@@ -37,7 +39,10 @@ export function ThemeProvider({
     root.classList.remove("light", "dark");
 
     if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
+        .matches
+        ? "dark"
+        : "light";
       root.classList.add(systemTheme);
       return;
     }
@@ -45,13 +50,23 @@ export function ThemeProvider({
     root.classList.add(theme);
   }, [theme]);
 
-  const value = {
-    theme,
-    setTheme: (theme: Theme) => {
+  // Memoize the setTheme function to prevent unnecessary re-renders
+  const setThemeCallback = React.useCallback(
+    (theme: Theme) => {
       localStorage.setItem(storageKey, theme);
       setTheme(theme);
     },
-  };
+    [storageKey, setTheme],
+  );
+
+  // Memoize the context value to prevent unnecessary re-renders
+  const value = React.useMemo(
+    () => ({
+      theme,
+      setTheme: setThemeCallback,
+    }),
+    [theme, setThemeCallback],
+  );
 
   return (
     <ThemeProviderContext.Provider {...props} value={value}>

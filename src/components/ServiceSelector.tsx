@@ -55,13 +55,14 @@ export function ServiceSelector({
   }
 
   // Group accounts by service
-  const accountsByService = activeServices.reduce<Record<string, ServiceAccount[]>>(
-    (acc, service) => {
-      acc[service] = serviceAccounts.filter(account => account.service === service);
-      return acc;
-    },
-    {}
-  );
+  const accountsByService = activeServices.reduce<
+    Record<string, ServiceAccount[]>
+  >((acc, service) => {
+    acc[service] = serviceAccounts.filter(
+      (account) => account.service === service,
+    );
+    return acc;
+  }, {});
 
   return (
     <DropdownMenu>
@@ -80,7 +81,7 @@ export function ServiceSelector({
         {activeServices.map((service) => {
           const accounts = accountsByService[service] ?? [];
           const hasMultipleAccounts = accounts.length > 1;
-          
+
           return (
             <React.Fragment key={service}>
               {hasMultipleAccounts ? (
@@ -94,15 +95,36 @@ export function ServiceSelector({
                     {accounts.map((account) => (
                       <DropdownMenuItem
                         key={account.id}
-                        onClick={() => onDisconnectAccount(service, account.id)}
+                        onClick={() => {
+                          // Confirm before disconnecting
+                          if (
+                            window.confirm(
+                              `Are you sure you want to disconnect ${account.email ?? account.name ?? `Account ${account.id}`}?`,
+                            )
+                          ) {
+                            onDisconnectAccount(service, account.id);
+                          }
+                        }}
                         className="cursor-pointer text-red-500 hover:text-red-700"
                       >
-                        Disconnect {account.email ?? account.name ?? `Account ${account.id}`}
+                        Disconnect{" "}
+                        {account.email ??
+                          account.name ??
+                          `Account ${account.id}`}
                       </DropdownMenuItem>
                     ))}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      onClick={() => onDisconnectService(service)}
+                      onClick={() => {
+                        // Confirm before disconnecting all accounts
+                        if (
+                          window.confirm(
+                            `Are you sure you want to disconnect all ${getServiceName(service)} accounts?`,
+                          )
+                        ) {
+                          onDisconnectService(service);
+                        }
+                      }}
                       className="cursor-pointer text-red-500 hover:text-red-700"
                     >
                       Disconnect all {getServiceName(service)} accounts
@@ -111,12 +133,27 @@ export function ServiceSelector({
                 </DropdownMenuSub>
               ) : (
                 <DropdownMenuItem
-                  onClick={() => onDisconnectService(service)}
+                  onClick={() => {
+                    // Confirm before disconnecting
+                    const accountInfo =
+                      accounts.length === 1 && accounts[0]?.email
+                        ? ` (${accounts[0].email})`
+                        : "";
+                    if (
+                      window.confirm(
+                        `Are you sure you want to disconnect ${getServiceName(service)}${accountInfo}?`,
+                      )
+                    ) {
+                      onDisconnectService(service);
+                    }
+                  }}
                   className="cursor-pointer text-red-500 hover:text-red-700"
                 >
                   Disconnect {getServiceName(service)}
                   {accounts.length === 1 && accounts[0]?.email && (
-                    <span className="ml-1 text-xs opacity-70">({accounts[0].email})</span>
+                    <span className="ml-1 text-xs opacity-70">
+                      ({accounts[0].email})
+                    </span>
                   )}
                 </DropdownMenuItem>
               )}
