@@ -11,6 +11,7 @@ import {
 } from "~/components/ui/table";
 import { Header } from "./Header";
 import { DriveItemRow } from "./DriveItemRow";
+import { DriveBreadcrumb } from "./DriveBreadcrumb";
 import { useDrive } from "~/contexts/DriveContext";
 import { LoadingSpinner } from "./ui/loading-spinner";
 
@@ -59,7 +60,7 @@ export function DriveUI({
   } = useDrive();
 
   const [currentFolder, setCurrentFolder] = useState<string>("root");
-  const [items, setItems] = useState<DriveItem[]>(initialItems || []);
+  const [items, setItems] = useState<DriveItem[]>(initialItems ?? []);
   const [filteredItems, setFilteredItems] = useState<DriveItem[]>([]);
   const [isLoading, setIsLoading] = useState(initialLoading ?? false);
   const [error, setError] = useState<string | null>(initialError ?? null);
@@ -71,6 +72,16 @@ export function DriveUI({
   >(null);
   const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
   const [searchInputValue, setSearchInputValue] = useState("");
+
+  // State for breadcrumb navigation
+  const [breadcrumbPath, setBreadcrumbPath] = useState<
+    Array<{
+      id: string;
+      name: string;
+      service?: string;
+      accountId?: string;
+    }>
+  >([]);
 
   // Add a map to track service account numbers
   const [serviceAccountNumbers, setServiceAccountNumbers] = useState<
@@ -270,14 +281,63 @@ export function DriveUI({
     // Set the service for this folder if it has one - do this first
     if (folder.service) {
       setCurrentFolderService(folder.service);
-      setCurrentAccountId(folder.accountId || null);
+      setCurrentAccountId(folder.accountId ?? null);
     }
 
     // Set the current folder ID - this should trigger the useEffect to fetch files
     setCurrentFolder(folder.id);
 
+    // Update breadcrumb path
+    if (folder.id === "root") {
+      // If navigating to root, clear the breadcrumb path
+      setBreadcrumbPath([]);
+    } else {
+      // If the folder is already in the breadcrumb path, truncate the path to that point
+      const existingIndex = breadcrumbPath.findIndex(
+        (item) => item.id === folder.id,
+      );
+
+      if (existingIndex >= 0) {
+        // Folder exists in path, truncate to that point
+        setBreadcrumbPath(breadcrumbPath.slice(0, existingIndex + 1));
+      } else {
+        // Add the folder to the breadcrumb path
+        setBreadcrumbPath([
+          ...breadcrumbPath,
+          {
+            id: folder.id,
+            name: folder.name,
+            service: folder.service,
+            accountId: folder.accountId,
+          },
+        ]);
+      }
+    }
+
     // No need to call fetchFiles directly as it will be triggered by the useEffect
     // when currentFolder changes
+  };
+
+  // Handler for breadcrumb navigation
+  const handleBreadcrumbClick = (item: {
+    id: string;
+    name: string;
+    service?: string;
+    accountId?: string;
+  }) => {
+    // Create a DriveItem from the breadcrumb item
+    const folder: DriveItem = {
+      id: item.id,
+      name: item.name,
+      type: "folder",
+      modifiedAt: "", // Not needed for navigation
+      parentId: null, // Not needed for navigation
+      service: item.service,
+      accountId: item.accountId,
+    };
+
+    // Use the existing folder click handler
+    handleFolderClick(folder);
   };
 
   const handleUpload = () => {
@@ -428,6 +488,13 @@ export function DriveUI({
     }
   }, [currentFolder]);
 
+  // Reset breadcrumb path when at root folder
+  useEffect(() => {
+    if (currentFolder === "root") {
+      setBreadcrumbPath([]);
+    }
+  }, [currentFolder]);
+
   // Clear items and filteredItems when logging out
   useEffect(() => {
     if (!isAuthenticated) {
@@ -438,8 +505,9 @@ export function DriveUI({
       setCurrentFolder("root");
       setCurrentFolderService(null);
       setCurrentAccountId(null);
+      setBreadcrumbPath([]);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, clearSearch]);
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-black dark:bg-gray-950 dark:text-white">
@@ -457,6 +525,14 @@ export function DriveUI({
           onDisconnectAccount={handleDisconnectAccount}
           onServiceSelect={handleServiceSelect}
           onAddAccount={handleAddAccount}
+        />
+
+        {/* Breadcrumb navigation */}
+        <DriveBreadcrumb
+          items={breadcrumbPath}
+          currentFolder={currentFolder}
+          onNavigate={handleBreadcrumbClick}
+          className="mb-2"
         />
 
         <div className="mx-auto max-w-6xl">
