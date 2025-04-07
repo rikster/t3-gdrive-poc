@@ -1,29 +1,75 @@
-# Create T3 App
+# StrataFusion - Unified Cloud Storage
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+A SaaS/Agentic AI online app that integrates multiple online storage services (Google Drive, OneDrive, Dropbox, iCloud, Box, Mega, pCloud) into a unified, mobile-first UI. The platform enables users to browse, search (including full-text search), open file types (in their respective applications), copy, delete and move folders recursively between the different services and platforms. For example, a search for “resume” finds ResumeDecember2024.docx on OneDrive and ResumeDecember2025.docx on Google Drive, allowing users to open them in Office 365, Google Docs, or the appropriate service.
 
-## What's next? How do I make an app with this?
+📌 **Follow Next.js documentation** for **Data Fetching, Rendering, and Routing**.
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+# Tech Stack:
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+## Language
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+- Typescript
 
-## Learn More
+## React Framework
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+- Next.js
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+## Package Manager
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+- pnpm
 
-## How do I deploy this?
+## Styling/Components
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+- Tailwindcss
+- shadcn/ui
+- Icons
+  - Lucide
+
+## Client State
+
+- ContextAPI
+
+## Animation
+
+- Motion
+
+## Testing
+
+- Unit
+  - Vitest
+- Component
+  - React testing library
+- E2E
+  - Playwright
+
+## Tables
+
+- Tanstack Table
+
+## Forms
+
+- React-Hook-Form
+- Zod for validation
+- Works w/ shadcn
+
+## Database
+
+- Superbase
+
+## Mobile
+
+- React Native
+
+## Component Dev
+
+- Storybook
+- Storybook Testing
+  - Actions and Interactions
+
+## Authentication
+
+- Clerk
+
+## Hosting
+
+- Vercel

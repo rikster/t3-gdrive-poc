@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { DriveUI } from './DriveUI';
 import { mockDriveData } from '../lib/mock-data';
-import { DriveContext, DriveContextType } from '~/contexts/DriveContext';
+import { DriveContext, DriveContextType } from '../contexts/DriveContext';
 import React from 'react';
 
 // Mock the DriveContext values
@@ -9,10 +9,13 @@ const mockDriveContextValue: DriveContextType = {
   isAuthenticated: true,
   isClerkAuthenticated: true,
   authenticateService: () => {}, // Mock function
+  addNewAccount: () => {}, // Mock function
   disconnectService: () => {}, // Mock function
+  disconnectAccount: () => {}, // Mock function
   logout: () => {}, // Mock function
   currentService: 'googledrive',
   activeServices: ['googledrive', 'onedrive'],
+  serviceAccounts: [], // Mock empty service accounts array
   isAuthenticating: false,
   searchQuery: "",
   setSearchQuery: () => {}, // Mock function
