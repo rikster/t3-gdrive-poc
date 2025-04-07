@@ -14,7 +14,6 @@ import { DriveItemRow } from "./DriveItemRow";
 import { useDrive } from "~/contexts/DriveContext";
 import { LoadingSpinner } from "./ui/loading-spinner";
 import { DriveBreadcrumb } from "./DriveBreadcrumb";
-import { useRouter, useSearchParams } from "next/navigation";
 
 interface DriveItem {
   id: string;
@@ -89,15 +88,33 @@ export function DriveUI({
     Record<string, Record<string, number>>
   >({});
 
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
+  // Function to update URL with folder information
+  // This is a no-op in Storybook environment
   const updateURL = (folder: DriveItem) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("folderId", folder.id);
-    if (folder.service) params.set("service", folder.service);
-    if (folder.accountId) params.set("accountId", folder.accountId);
-    router.push(`/?${params.toString()}`);
+    // Only run in browser environment with Next.js router
+    if (
+      typeof window !== "undefined" &&
+      typeof (window as any).__NEXT_DATA__ !== "undefined"
+    ) {
+      try {
+        // Dynamic import to avoid Storybook errors
+        import("next/navigation")
+          .then(({ useRouter, useSearchParams }) => {
+            const router = useRouter();
+            const searchParams = useSearchParams();
+            const params = new URLSearchParams(searchParams.toString());
+            params.set("folderId", folder.id);
+            if (folder.service) params.set("service", folder.service);
+            if (folder.accountId) params.set("accountId", folder.accountId);
+            router.push(`/?${params.toString()}`);
+          })
+          .catch(() => {
+            // Silently fail in environments where Next.js router is not available
+          });
+      } catch (e) {
+        // Silently fail in environments where Next.js router is not available
+      }
+    }
   };
 
   useEffect(() => {
@@ -295,6 +312,8 @@ export function DriveUI({
     }
 
     setCurrentFolder(folder.id);
+
+    // Try to update URL (will be no-op in Storybook)
     updateURL(folder);
 
     // Update breadcrumb path
@@ -503,30 +522,49 @@ export function DriveUI({
     }
   }, [isAuthenticated]);
 
+  // Handle URL parameters for folder navigation
+  // This effect only runs in browser environment with Next.js
   useEffect(() => {
-    const folderId = searchParams.get("folderId");
-    const service = searchParams.get("service");
-    const accountId = searchParams.get("accountId");
+    if (
+      typeof window !== "undefined" &&
+      typeof (window as any).__NEXT_DATA__ !== "undefined"
+    ) {
+      try {
+        // Dynamic import to avoid Storybook errors
+        import("next/navigation")
+          .then(({ useSearchParams }) => {
+            const searchParams = useSearchParams();
+            const folderId = searchParams.get("folderId");
+            const service = searchParams.get("service");
+            const accountId = searchParams.get("accountId");
 
-    if (folderId && folderId !== currentFolder) {
-      const folderItem: DriveItem = {
-        id: folderId,
-        name: "", // This will be updated when folder contents are fetched
-        type: "folder",
-        modifiedAt: "",
-        parentId: null,
-        service: service || undefined,
-        accountId: accountId || undefined,
-      };
+            if (folderId && folderId !== currentFolder) {
+              const folderItem: DriveItem = {
+                id: folderId,
+                name: "", // This will be updated when folder contents are fetched
+                type: "folder",
+                modifiedAt: "",
+                parentId: null,
+                service: service || undefined,
+                accountId: accountId || undefined,
+              };
 
-      // Use existing logic but skip URL update
-      if (folderItem.service) {
-        setCurrentFolderService(folderItem.service);
-        setCurrentAccountId(folderItem.accountId || null);
+              // Use existing logic but skip URL update
+              if (folderItem.service) {
+                setCurrentFolderService(folderItem.service);
+                setCurrentAccountId(folderItem.accountId || null);
+              }
+              setCurrentFolder(folderItem.id);
+            }
+          })
+          .catch(() => {
+            // Silently fail in environments where Next.js router is not available
+          });
+      } catch (e) {
+        // Silently fail in environments where Next.js router is not available
       }
-      setCurrentFolder(folderItem.id);
     }
-  }, [searchParams]);
+  }, [currentFolder]);
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-black dark:bg-gray-950 dark:text-white">

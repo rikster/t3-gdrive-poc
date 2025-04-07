@@ -1,0 +1,11 @@
+Add navigation breadcrumbs component with Storybook stories
+
+- Create DriveBreadcrumb component to show folder navigation path
+- Integrate breadcrumbs between Header and file table in DriveUI
+- Track navigation path state in DriveUI component
+- Update breadcrumb path when navigating through folders
+- Support navigation across different services and accounts
+- Allow clicking on breadcrumb items to navigate back to previous folders
+- Add Storybook stories for DriveBreadcrumb component
+- Update DriveUI stories to include breadcrumb navigation examples
+- Fix Next.js router usage to make components work in Storybook

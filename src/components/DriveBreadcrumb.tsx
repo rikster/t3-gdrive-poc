@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { ChevronRight, Home } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
@@ -26,8 +25,6 @@ export function DriveBreadcrumb({
   onNavigate,
   className,
 }: DriveBreadcrumbProps) {
-  const router = useRouter();
-
   // Handle popstate events (browser back/forward)
   useEffect(() => {
     const handlePopState = () => {
@@ -35,8 +32,12 @@ export function DriveBreadcrumb({
       // This ensures breadcrumbs stay in sync
     };
 
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
+    // Only add event listener in browser environment (not in Storybook)
+    if (typeof window !== "undefined") {
+      window.addEventListener("popstate", handlePopState);
+      return () => window.removeEventListener("popstate", handlePopState);
+    }
+    return undefined;
   }, []);
 
   // Handle root folder navigation
@@ -71,7 +72,7 @@ export function DriveBreadcrumb({
         </li>
 
         {/* Path items */}
-        {items.map((item, index) => (
+        {items.map((item) => (
           <li key={item.id} className="flex items-center">
             <ChevronRight className="text-muted-foreground h-4 w-4 flex-shrink-0" />
             <Button
