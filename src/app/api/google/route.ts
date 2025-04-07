@@ -147,22 +147,24 @@ async function getUserInfo(auth: any) {
       };
     } catch (error) {
       console.error("Error fetching user info from userinfo API:", error);
-      
+
       // If we can't get the email from userinfo, try to get it from token info
       if (auth && auth.credentials && auth.credentials.access_token) {
         try {
-          const tokenInfo = await auth.getTokenInfo(auth.credentials.access_token);
+          const tokenInfo = await auth.getTokenInfo(
+            auth.credentials.access_token,
+          );
           if (tokenInfo && tokenInfo.email) {
             return {
               email: tokenInfo.email,
-              name: tokenInfo.email.split('@')[0],
+              name: tokenInfo.email.split("@")[0],
             };
           }
         } catch (tokenError) {
           console.error("Error getting token info:", tokenError);
         }
       }
-      
+
       // If all else fails, return empty values
       return {
         email: "",
@@ -179,7 +181,11 @@ async function getUserInfo(auth: any) {
 }
 
 // List files from Google Drive using the provided auth client
-async function listFiles(auth: any, folderId: string, accountId: string = "default") {
+async function listFiles(
+  auth: any,
+  folderId: string,
+  accountId: string = "default",
+) {
   try {
     const drive = google.drive({ version: "v3", auth });
     const response = await drive.files.list({
@@ -195,7 +201,7 @@ async function listFiles(auth: any, folderId: string, accountId: string = "defau
     // Get user info to include with files
     const userInfo = await getUserInfo(auth);
     const userEmail = userInfo?.email || undefined;
-    
+
     // Transform the data to a format our UI expects
     const files = response.data.files.map((file) => ({
       id: file.id,
