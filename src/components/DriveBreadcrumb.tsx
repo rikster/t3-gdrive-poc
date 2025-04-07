@@ -45,6 +45,9 @@ export function DriveBreadcrumb({
       id: "root",
       name: "Home",
     });
+
+    // Ensure the URL is updated with the root folder ID
+    router.push("/?folderId=root");
   };
 
   return (
