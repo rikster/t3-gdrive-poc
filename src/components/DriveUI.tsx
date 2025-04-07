@@ -13,6 +13,8 @@ import { Header } from "./Header";
 import { DriveItemRow } from "./DriveItemRow";
 import { useDrive } from "~/contexts/DriveContext";
 import { LoadingSpinner } from "./ui/loading-spinner";
+import { DriveBreadcrumb } from "./DriveBreadcrumb";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface DriveItem {
   id: string;
@@ -72,10 +74,31 @@ export function DriveUI({
   const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
   const [searchInputValue, setSearchInputValue] = useState("");
 
+  // State to track breadcrumb path
+  const [breadcrumbPath, setBreadcrumbPath] = useState<
+    Array<{
+      id: string;
+      name: string;
+      service?: string;
+      accountId?: string;
+    }>
+  >([]);
+
   // Add a map to track service account numbers
   const [serviceAccountNumbers, setServiceAccountNumbers] = useState<
     Record<string, Record<string, number>>
   >({});
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const updateURL = (folder: DriveItem) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("folderId", folder.id);
+    if (folder.service) params.set("service", folder.service);
+    if (folder.accountId) params.set("accountId", folder.accountId);
+    router.push(`/?${params.toString()}`);
+  };
 
   useEffect(() => {
     if (initialItems) {
@@ -264,20 +287,53 @@ export function DriveUI({
   }, [currentFolder, isAuthenticated, serviceAccounts, currentAccountId]);
 
   const handleFolderClick = (folder: DriveItem) => {
-    // Don't do anything if we're loading
     if (isLoading) return;
 
-    // Set the service for this folder if it has one - do this first
     if (folder.service) {
       setCurrentFolderService(folder.service);
       setCurrentAccountId(folder.accountId || null);
     }
 
-    // Set the current folder ID - this should trigger the useEffect to fetch files
     setCurrentFolder(folder.id);
+    updateURL(folder);
 
-    // No need to call fetchFiles directly as it will be triggered by the useEffect
-    // when currentFolder changes
+    // Update breadcrumb path
+    if (folder.id === "root") {
+      // If navigating to root, clear the breadcrumb path
+      setBreadcrumbPath([]);
+    } else if (folder.parentId === "root" || folder.parentId === null) {
+      // If navigating to a top-level folder, set it as the only item in the path
+      setBreadcrumbPath([
+        {
+          id: folder.id,
+          name: folder.name,
+          service: folder.service,
+          accountId: folder.accountId,
+        },
+      ]);
+    } else {
+      // If navigating to a subfolder, add it to the path
+      // First check if we're navigating to a folder that's already in the path
+      const existingIndex = breadcrumbPath.findIndex(
+        (item) => item.id === folder.id,
+      );
+
+      if (existingIndex >= 0) {
+        // If the folder is already in the path, truncate the path to that point
+        setBreadcrumbPath(breadcrumbPath.slice(0, existingIndex + 1));
+      } else {
+        // Otherwise add the new folder to the path
+        setBreadcrumbPath([
+          ...breadcrumbPath,
+          {
+            id: folder.id,
+            name: folder.name,
+            service: folder.service,
+            accountId: folder.accountId,
+          },
+        ]);
+      }
+    }
   };
 
   const handleUpload = () => {
@@ -426,6 +482,11 @@ export function DriveUI({
       clearSearch();
       setSearchInputValue("");
     }
+
+    // If we're at root, clear the breadcrumb path
+    if (currentFolder === "root") {
+      setBreadcrumbPath([]);
+    }
   }, [currentFolder]);
 
   // Clear items and filteredItems when logging out
@@ -438,8 +499,34 @@ export function DriveUI({
       setCurrentFolder("root");
       setCurrentFolderService(null);
       setCurrentAccountId(null);
+      setBreadcrumbPath([]);
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    const folderId = searchParams.get("folderId");
+    const service = searchParams.get("service");
+    const accountId = searchParams.get("accountId");
+
+    if (folderId && folderId !== currentFolder) {
+      const folderItem: DriveItem = {
+        id: folderId,
+        name: "", // This will be updated when folder contents are fetched
+        type: "folder",
+        modifiedAt: "",
+        parentId: null,
+        service: service || undefined,
+        accountId: accountId || undefined,
+      };
+
+      // Use existing logic but skip URL update
+      if (folderItem.service) {
+        setCurrentFolderService(folderItem.service);
+        setCurrentAccountId(folderItem.accountId || null);
+      }
+      setCurrentFolder(folderItem.id);
+    }
+  }, [searchParams]);
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-black dark:bg-gray-950 dark:text-white">
@@ -460,6 +547,25 @@ export function DriveUI({
         />
 
         <div className="mx-auto max-w-6xl">
+          {/* Breadcrumb navigation */}
+          <DriveBreadcrumb
+            items={breadcrumbPath}
+            currentFolder={currentFolder}
+            onNavigate={(item) => {
+              // Create a simplified DriveItem to pass to handleFolderClick
+              const folderItem: DriveItem = {
+                id: item.id,
+                name: item.name,
+                type: "folder",
+                modifiedAt: "",
+                parentId: null,
+                service: item.service,
+                accountId: item.accountId,
+              };
+              handleFolderClick(folderItem);
+            }}
+            className="mb-4"
+          />
           <div className="overflow-hidden rounded-lg border bg-white dark:border-gray-800 dark:bg-gray-950">
             {error && (
               <div className="border-b border-red-100 bg-red-50 p-4 text-red-600 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400">
