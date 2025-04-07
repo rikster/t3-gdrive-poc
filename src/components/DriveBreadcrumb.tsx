@@ -35,38 +35,40 @@ export function DriveBreadcrumb({
   return (
     <nav
       className={cn(
-        "flex items-center space-x-1 overflow-x-auto pb-2 mx-auto max-w-6xl",
-        className
+        "flex w-full items-center space-x-1 overflow-x-auto pb-2",
+        className,
       )}
       aria-label="Breadcrumb"
     >
-      <ol className="flex items-center space-x-1">
+      <ol className="flex items-center space-x-1 text-sm">
         {/* Root/Home item */}
         <li>
           <Button
             variant="ghost"
             size="sm"
-            className="flex items-center h-8 px-2 text-sm"
+            className="flex h-8 items-center px-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
             onClick={handleRootClick}
             disabled={currentFolder === "root"}
           >
-            <Home className="w-4 h-4 mr-1" />
-            <span>Home</span>
+            <Home className="mr-1 h-4 w-4 text-blue-500" />
+            <span className="font-medium">Home</span>
           </Button>
         </li>
 
         {/* Path items */}
         {items.map((item, index) => (
           <li key={item.id} className="flex items-center">
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <ChevronRight className="text-muted-foreground h-4 w-4 flex-shrink-0" />
             <Button
               variant="ghost"
               size="sm"
-              className="flex items-center h-8 px-2 text-sm"
+              className="flex h-8 items-center px-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
               onClick={() => onNavigate(item)}
               disabled={currentFolder === item.id}
             >
-              <span className="truncate max-w-[150px]">{item.name}</span>
+              <span className="max-w-[150px] truncate font-medium">
+                {item.name}
+              </span>
             </Button>
           </li>
         ))}
