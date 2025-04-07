@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "~/components/ui/button";
 import {
   Table,
   TableHeader,
@@ -10,9 +9,8 @@ import {
   TableRow,
   TableCell,
 } from "~/components/ui/table";
-import { FileIcon, FolderIcon } from "lucide-react";
-
 import { Header } from "./Header";
+import { DriveItemRow } from "./DriveItemRow";
 import { useDrive } from "~/contexts/DriveContext";
 import { LoadingSpinner } from "./ui/loading-spinner";
 
@@ -248,16 +246,16 @@ export function DriveUI({
     if (isAuthenticated) {
       // Create a reference to track if the component is still mounted
       let isMounted = true;
-      
+
       // Use an async function to handle fetch with proper cleanup
       const doFetch = async () => {
         if (isMounted) {
           await fetchFiles(currentFolder);
         }
       };
-      
+
       doFetch();
-      
+
       // Cleanup function to prevent state updates after unmount
       return () => {
         isMounted = false;
@@ -277,7 +275,7 @@ export function DriveUI({
 
     // Set the current folder ID - this should trigger the useEffect to fetch files
     setCurrentFolder(folder.id);
-    
+
     // No need to call fetchFiles directly as it will be triggered by the useEffect
     // when currentFolder changes
   };
@@ -341,35 +339,6 @@ export function DriveUI({
     }
   };
 
-  // Function to get service account email
-  const getServiceAccountEmail = (item: DriveItem) => {
-    // First try to get email directly from the item
-    if (item.accountEmail !== undefined && item.accountEmail !== null) {
-      console.log(
-        `Found email directly on item ${item.name}: ${item.accountEmail}`,
-      );
-      return item.accountEmail;
-    }
-
-    // Then try to get from service accounts
-    const serviceAccount = serviceAccounts.find(
-      (a) => a.service === item.service && a.id === item.accountId,
-    );
-
-    if (serviceAccount?.email !== undefined && serviceAccount?.email !== null) {
-      console.log(
-        `Found email in serviceAccounts for ${item.name}: ${serviceAccount.email}`,
-      );
-      return serviceAccount.email;
-    }
-
-    console.log(
-      `No email found for ${item.service} item: ${item.name}, accountId: ${item.accountId}`,
-    );
-    // Finally, return empty string if no email found
-    return "";
-  };
-
   // Generate account numbers for each service when serviceAccounts changes
   useEffect(() => {
     if (serviceAccounts.length === 0) return;
@@ -396,35 +365,6 @@ export function DriveUI({
 
     setServiceAccountNumbers(accountNumbers);
   }, [serviceAccounts]);
-
-  // Get account display name with numbering
-  const getAccountDisplayName = (item: DriveItem) => {
-    if (!item.service || !item.accountId) {
-      return getServiceName(item.service);
-    }
-
-    // Get the account number
-    const accountNumbers = serviceAccountNumbers[item.service];
-    const accountNumber =
-      accountNumbers && item.accountId
-        ? accountNumbers[item.accountId]
-        : undefined;
-
-    // Always show the account number if available
-    if (accountNumber) {
-      return `${accountNumber}`;
-    }
-
-    // Fallback if number not available for some reason
-    return (
-      item.accountEmail ?? item.accountName ?? getServiceName(item.service)
-    );
-  };
-
-  // Get the current breadcrumb path with service indicators
-  const getBreadcrumbTitle = () => {
-    return "My Drives";
-  };
 
   // Handle search input changes
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -501,81 +441,11 @@ export function DriveUI({
     }
   }, [isAuthenticated]);
 
-  // Function to get combined service and account display for table
-  const getServiceAccountDisplay = (item: DriveItem) => {
-    const serviceName = getServiceName(item.service);
-
-    // Special handling for Dropbox with extra logging
-    if (item.service === "dropbox") {
-      console.log(
-        "Dropbox item:",
-        item.name,
-        "accountEmail:",
-        item.accountEmail,
-        "accountId:",
-        item.accountId,
-      );
-
-      // Get account from serviceAccounts
-      const account = serviceAccounts.find(
-        (a) => a.service === "dropbox" && a.id === item.accountId,
-      );
-      console.log(
-        "Found Dropbox account in serviceAccounts:",
-        account?.id,
-        "email:",
-        account?.email,
-      );
-
-      // Find any Dropbox account with an email
-      const anyDropboxAccount = serviceAccounts.find(
-        (a) => a.service === "dropbox" && a.email,
-      );
-
-      // Force a value for Dropbox accounts
-      if (account?.email) {
-        return `${serviceName} - ${account.email}`;
-      } else if (anyDropboxAccount?.email) {
-        return `${serviceName} - ${anyDropboxAccount.email}`;
-      } else if (item.accountEmail) {
-        return `${serviceName} - ${item.accountEmail}`;
-      } else {
-        // Hard fallback for Dropbox accounts - get the first email from any service account
-        const anyAccount = serviceAccounts.find((a) => a.email);
-        if (anyAccount?.email) {
-          return `${serviceName} - ${anyAccount.email}`;
-        }
-        // Ultimate fallback - force display an email
-        return `${serviceName} - rhounslow@gmail.com`;
-      }
-    }
-
-    // Try to get email from various sources
-    let email = "";
-
-    // First check the item itself
-    if (item.accountEmail !== undefined && item.accountEmail !== null) {
-      email = item.accountEmail;
-    }
-    // Then check service accounts
-    else if (item.service && item.accountId) {
-      const account = serviceAccounts.find(
-        (a) => a.service === item.service && a.id === item.accountId,
-      );
-      if (account?.email) {
-        email = account.email;
-      }
-    }
-
-    // Return formatted display
-    return email ? `${serviceName} - ${email}` : serviceName;
-  };
-
   return (
-    <div className="flex flex-col min-h-screen text-black bg-white dark:bg-gray-950 dark:text-white">
+    <div className="flex min-h-screen flex-col bg-white text-black dark:bg-gray-950 dark:text-white">
       <div className="flex-none p-4 sm:p-6">
         {/* Header */}
-        <Header 
+        <Header
           isAuthenticated={isAuthenticated}
           activeServices={activeServices}
           serviceAccounts={serviceAccounts}
@@ -590,9 +460,9 @@ export function DriveUI({
         />
 
         <div className="mx-auto max-w-6xl">
-          <div className="overflow-hidden bg-white rounded-lg border dark:border-gray-800 dark:bg-gray-950">
+          <div className="overflow-hidden rounded-lg border bg-white dark:border-gray-800 dark:bg-gray-950">
             {error && (
-              <div className="p-4 text-red-600 bg-red-50 border-b border-red-100 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400">
+              <div className="border-b border-red-100 bg-red-50 p-4 text-red-600 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400">
                 <p>{error}</p>
               </div>
             )}
@@ -600,7 +470,7 @@ export function DriveUI({
               {isLoading || isAuthenticating || isSearching ? (
                 <div className="py-16">
                   <LoadingSpinner />
-                  <p className="text-center text-muted-foreground">
+                  <p className="text-muted-foreground text-center">
                     {isSearching ? "Searching..." : "Loading files..."}
                   </p>
                 </div>
@@ -633,62 +503,18 @@ export function DriveUI({
                       </TableRow>
                     ) : (
                       filteredItems.map((item) => (
-                        <TableRow
+                        <DriveItemRow
                           key={`${item.service}-${item.accountId ?? "default"}-${item.id}`}
-                          className="group hover:bg-gray-100 dark:hover:bg-gray-800"
-                        >
-                          <TableCell className="py-3">
-                            <div className="flex min-h-[32px] w-full items-start gap-2">
-                              {item.type === "folder" ? (
-                                <Button
-                                  variant="ghost"
-                                  className="flex justify-start items-start p-0 w-full h-auto text-left"
-                                  onClick={() => {
-                                    if (isRecursiveSearch) {
-                                      // Clear search when navigating to a folder from search results
-                                      clearSearch();
-                                      setSearchInputValue("");
-                                    }
-                                    handleFolderClick(item);
-                                  }}
-                                >
-                                  <FolderIcon className="flex-shrink-0 mt-1 mr-2 w-5 h-5 text-blue-500" />
-                                  <span className="whitespace-normal break-words hover:underline">
-                                    {item.name}
-                                  </span>
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="ghost"
-                                  className="flex justify-start items-start p-0 w-full h-auto text-left"
-                                  onClick={() => {
-                                    if (item.service) {
-                                      openFile(
-                                        item.id,
-                                        item.service,
-                                        item.accountId as string,
-                                      );
-                                    }
-                                  }}
-                                >
-                                  <FileIcon className="flex-shrink-0 mt-1 mr-2 w-5 h-5 text-gray-500" />
-                                  <span className="whitespace-normal break-words hover:underline">
-                                    {item.name}
-                                  </span>
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
-                            {item.modifiedAt}
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
-                            {item.size || "-"}
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
-                            {getServiceAccountDisplay(item)}
-                          </TableCell>
-                        </TableRow>
+                          item={item}
+                          serviceAccounts={serviceAccounts}
+                          isRecursiveSearch={isRecursiveSearch}
+                          clearSearch={() => {
+                            clearSearch();
+                            setSearchInputValue("");
+                          }}
+                          handleFolderClick={handleFolderClick}
+                          openFile={openFile}
+                        />
                       ))
                     )}
                   </TableBody>
