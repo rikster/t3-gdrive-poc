@@ -16,6 +16,7 @@ import { LoadingSpinner } from "./ui/loading-spinner";
 import { DriveBreadcrumb } from "./DriveBreadcrumb";
 import { DriveErrorState } from "./DriveErrorState";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useDriveNavigation } from "~/hooks/useDriveNavigation";
 
 interface DriveItem {
   id: string;
@@ -61,7 +62,6 @@ export function DriveUI({
     openFile,
   } = useDrive();
 
-  const [currentFolder, setCurrentFolder] = useState<string>("root");
   const [items, setItems] = useState<DriveItem[]>(initialItems || []);
   const [filteredItems, setFilteredItems] = useState<DriveItem[]>([]);
   const [isLoading, setIsLoading] = useState(initialLoading ?? false);
@@ -69,21 +69,18 @@ export function DriveUI({
   const [serviceItems, setServiceItems] = useState<Record<string, DriveItem[]>>(
     {},
   );
-  const [currentFolderService, setCurrentFolderService] = useState<
-    string | null
-  >(null);
-  const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
   const [searchInputValue, setSearchInputValue] = useState("");
 
-  // State to track breadcrumb path
-  const [breadcrumbPath, setBreadcrumbPath] = useState<
-    Array<{
-      id: string;
-      name: string;
-      service?: string;
-      accountId?: string;
-    }>
-  >([]);
+  // Add the hook
+  const {
+    currentFolder,
+    currentFolderService,
+    currentAccountId,
+    breadcrumbPath,
+    handleFolderClick,
+    navigateToRoot,
+    updateURL, // Make sure we're getting this from the hook
+  } = useDriveNavigation();
 
   // Add a map to track service account numbers
   const [serviceAccountNumbers, setServiceAccountNumbers] = useState<
@@ -92,14 +89,6 @@ export function DriveUI({
 
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  const updateURL = (folder: DriveItem) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("folderId", folder.id);
-    if (folder.service) params.set("service", folder.service);
-    if (folder.accountId) params.set("accountId", folder.accountId);
-    router.push(`/?${params.toString()}`);
-  };
 
   useEffect(() => {
     if (initialItems) {
@@ -219,8 +208,16 @@ export function DriveUI({
 
         // Update state with all services' files
         setServiceItems(serviceResults);
-        setCurrentFolderService(null);
-        setCurrentAccountId(null);
+
+        // Instead of directly setting these values, use the navigation hook
+        const rootFolder: DriveItem = {
+          id: "root",
+          name: "Home",
+          type: "folder",
+          modifiedAt: "",
+          parentId: null,
+        };
+        handleFolderClick(rootFolder);
       } else if (currentFolderService && currentAccountId) {
         // If we're in a specific folder with a specific account, only fetch from that account
         allFiles = await fetchFilesFromService(
@@ -259,6 +256,7 @@ export function DriveUI({
 
       setItems(sortedFiles);
     } catch (err) {
+      console.error("Fetch files error:", err); // Add more detailed error logging
       setError(`Failed to fetch files from one or more services`);
       setItems([]);
     } finally {
@@ -268,10 +266,8 @@ export function DriveUI({
 
   useEffect(() => {
     if (isAuthenticated) {
-      // Create a reference to track if the component is still mounted
       let isMounted = true;
 
-      // Use an async function to handle fetch with proper cleanup
       const doFetch = async () => {
         if (isMounted) {
           await fetchFiles(currentFolder);
@@ -280,62 +276,17 @@ export function DriveUI({
 
       doFetch();
 
-      // Cleanup function to prevent state updates after unmount
       return () => {
         isMounted = false;
       };
     }
-  }, [currentFolder, isAuthenticated, serviceAccounts, currentAccountId]);
-
-  const handleFolderClick = (folder: DriveItem) => {
-    if (isLoading) return;
-
-    if (folder.service) {
-      setCurrentFolderService(folder.service);
-      setCurrentAccountId(folder.accountId || null);
-    }
-
-    setCurrentFolder(folder.id);
-    updateURL(folder);
-
-    // Update breadcrumb path
-    if (folder.id === "root") {
-      // If navigating to root, clear the breadcrumb path
-      setBreadcrumbPath([]);
-    } else if (folder.parentId === "root" || folder.parentId === null) {
-      // If navigating to a top-level folder, set it as the only item in the path
-      setBreadcrumbPath([
-        {
-          id: folder.id,
-          name: folder.name,
-          service: folder.service,
-          accountId: folder.accountId,
-        },
-      ]);
-    } else {
-      // If navigating to a subfolder, add it to the path
-      // First check if we're navigating to a folder that's already in the path
-      const existingIndex = breadcrumbPath.findIndex(
-        (item) => item.id === folder.id,
-      );
-
-      if (existingIndex >= 0) {
-        // If the folder is already in the path, truncate the path to that point
-        setBreadcrumbPath(breadcrumbPath.slice(0, existingIndex + 1));
-      } else {
-        // Otherwise add the new folder to the path
-        setBreadcrumbPath([
-          ...breadcrumbPath,
-          {
-            id: folder.id,
-            name: folder.name,
-            service: folder.service,
-            accountId: folder.accountId,
-          },
-        ]);
-      }
-    }
-  };
+  }, [
+    currentFolder,
+    isAuthenticated,
+    serviceAccounts,
+    currentAccountId,
+    currentFolderService,
+  ]);
 
   const handleUpload = () => {
     alert("Upload functionality would go here!");
@@ -484,9 +435,9 @@ export function DriveUI({
       setSearchInputValue("");
     }
 
-    // If we're at root, clear the breadcrumb path
+    // If we're at root, use navigateToRoot
     if (currentFolder === "root") {
-      setBreadcrumbPath([]);
+      navigateToRoot();
     }
   }, [currentFolder]);
 
@@ -497,10 +448,7 @@ export function DriveUI({
       setFilteredItems([]);
       setSearchInputValue("");
       clearSearch();
-      setCurrentFolder("root");
-      setCurrentFolderService(null);
-      setCurrentAccountId(null);
-      setBreadcrumbPath([]);
+      navigateToRoot();
     }
   }, [isAuthenticated]);
 
@@ -553,7 +501,6 @@ export function DriveUI({
             items={breadcrumbPath}
             currentFolder={currentFolder}
             onNavigate={(item) => {
-              // Create a simplified DriveItem to pass to handleFolderClick
               const folderItem: DriveItem = {
                 id: item.id,
                 name: item.name,
