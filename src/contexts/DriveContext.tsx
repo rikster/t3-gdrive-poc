@@ -6,9 +6,10 @@ import React, {
   useState,
   useEffect,
   ReactNode,
+  useCallback,
 } from "react";
 import { ErrorDialog } from "~/components/ErrorDialog";
-import type { ServiceType, ServiceAccount } from "~/types/services";
+import type { ServiceAccount } from "~/types/services";
 import { useRouter } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
 
@@ -63,7 +64,7 @@ export const DriveContext = createContext<DriveContextType>({
 });
 
 export function DriveProvider({ children }: { children: ReactNode }) {
-  const router = useRouter();
+  useRouter(); // Keep for potential future use
   const { signOut } = useClerk();
   const { isSignedIn } = useUser();
 
@@ -76,7 +77,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<DriveItem[]>([]);
-  const [isRecursiveSearch, setIsRecursiveSearch] = useState(true);
+  const [isRecursiveSearch] = useState(true);
 
   useEffect(() => {
     setIsClerkAuthenticated(!!isSignedIn);
@@ -87,25 +88,121 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   const [errorMessage, setErrorMessage] = useState("");
   const [errorTitle, setErrorTitle] = useState("Error");
 
-  // Check for error parameters in the URL (for duplicate account errors)
+  // Check for error parameters in the URL and handle redirects
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      const error = url.searchParams.get("error");
-      const message = url.searchParams.get("message");
+    // Only run this effect once on mount
+    let isMounted = true;
 
-      if (error === "duplicate_account" && message) {
-        // Set error message and show dialog
-        setErrorTitle("Duplicate Account");
-        setErrorMessage(message);
-        setErrorDialogOpen(true);
+    const handleErrorParams = () => {
+      if (!isMounted || typeof window === "undefined") return false;
 
-        // Remove the error parameters from the URL
-        url.searchParams.delete("error");
-        url.searchParams.delete("message");
-        window.history.replaceState({}, "", url.toString());
+      try {
+        // Check for error parameters
+        const url = new URL(window.location.href);
+        const error = url.searchParams.get("error");
+        const message = url.searchParams.get("message");
+        const timestamp = url.searchParams.get("t"); // Check for timestamp parameter
+        const critical = url.searchParams.get("critical") === "true"; // Check if this is a critical error
+
+        if (error === "duplicate_account" && message) {
+          console.log(
+            "Found duplicate account error in URL with timestamp:",
+            timestamp,
+            "Critical:",
+            critical,
+          );
+
+          // Reset authentication state first to prevent infinite loops
+          setIsAuthenticating(false);
+
+          // Remove the error parameters from the URL but keep the history intact
+          // This prevents the URL from showing the error parameters but doesn't navigate away
+          const cleanUrl = new URL(window.location.href);
+          cleanUrl.searchParams.delete("error");
+          cleanUrl.searchParams.delete("message");
+          cleanUrl.searchParams.delete("t");
+          cleanUrl.searchParams.delete("critical");
+          window.history.replaceState({}, "", cleanUrl.toString());
+
+          // Set error message and show dialog - do this last
+          if (isMounted) {
+            setErrorTitle("Duplicate Account");
+            setErrorMessage(message);
+
+            // For critical errors, show the dialog immediately and with higher priority
+            if (critical) {
+              console.log("Opening critical error dialog immediately");
+              setErrorDialogOpen(true);
+
+              // Also set a backup timeout in case the immediate setting doesn't work
+              setTimeout(() => {
+                if (isMounted) {
+                  console.log("Backup: ensuring error dialog is open");
+                  setErrorDialogOpen(true);
+                }
+              }, 500);
+            } else {
+              // For non-critical errors, use a small timeout
+              setTimeout(() => {
+                if (isMounted) {
+                  console.log("Opening error dialog for duplicate account");
+                  setErrorDialogOpen(true);
+                }
+              }, 50);
+            }
+          }
+          return true; // Indicate that we found and handled an error
+        }
+        return false;
+      } catch (e) {
+        console.error("Error handling URL parameters:", e);
+        return false;
       }
+    };
+
+    const handleRedirectAfterAuth = () => {
+      if (!isMounted || typeof window === "undefined") return;
+
+      try {
+        // Check for redirect after authentication
+        const redirectUrl = sessionStorage.getItem("redirectAfterAuth");
+        if (redirectUrl) {
+          // Clear the stored URL
+          sessionStorage.removeItem("redirectAfterAuth");
+
+          // Check if we're on an error page
+          const url = new URL(window.location.href);
+          const error = url.searchParams.get("error");
+
+          // Only redirect if we're not on an error page
+          if (!error) {
+            // Use a timeout to avoid immediate redirect which could cause issues
+            setTimeout(() => {
+              if (isMounted) {
+                window.location.href = redirectUrl;
+              }
+            }, 100);
+          }
+        }
+      } catch (e) {
+        console.error("Error handling redirect after auth:", e);
+      }
+    };
+
+    // Handle error parameters first and only proceed with redirect if no error was found
+    const errorFound = handleErrorParams();
+
+    // Then handle redirects (with a small delay) only if no error was found
+    if (!errorFound) {
+      setTimeout(() => {
+        handleRedirectAfterAuth();
+      }, 100);
     }
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -130,7 +227,11 @@ export function DriveProvider({ children }: { children: ReactNode }) {
           setActiveServices(data.activeServices);
 
           if (data.activeServices.length > 0 && !currentService) {
-            setCurrentService(data.activeServices[0]);
+            // Ensure we have a valid string before setting current service
+            const firstService = data.activeServices[0];
+            if (typeof firstService === "string") {
+              setCurrentService(firstService);
+            }
           }
         }
 
@@ -146,41 +247,61 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     checkAuthStatus();
   }, [currentService, isSignedIn]);
 
-  const authenticateService = async (serviceId: string) => {
-    setIsAuthenticating(true);
+  const authenticateService = useCallback(
+    async (serviceId: string) => {
+      // Prevent multiple authentication attempts
+      if (isAuthenticating) return;
 
-    try {
-      const response = await fetch(`/api/${serviceId}`);
-      const data = await response.json();
+      setIsAuthenticating(true);
 
-      if (data.url) {
-        window.location.href = data.url;
-        return;
+      try {
+        const response = await fetch(`/api/${serviceId}`);
+        const data = await response.json();
+
+        if (data.url) {
+          // Store the current URL to redirect back after authentication
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("redirectAfterAuth", window.location.href);
+          }
+          window.location.href = data.url;
+          return;
+        }
+        setIsAuthenticating(false);
+      } catch (error) {
+        console.error(`Failed to authenticate with ${serviceId}:`, error);
+        setIsAuthenticating(false);
       }
-      setIsAuthenticating(false);
-    } catch (error) {
-      console.error(`Failed to authenticate with ${serviceId}:`, error);
-      setIsAuthenticating(false);
-    }
-  };
+    },
+    [isAuthenticating],
+  );
 
-  const addNewAccount = async (serviceId: string) => {
-    setIsAuthenticating(true);
+  const addNewAccount = useCallback(
+    async (serviceId: string) => {
+      // Prevent multiple authentication attempts
+      if (isAuthenticating) return;
 
-    try {
-      const response = await fetch(`/api/${serviceId}?addAccount=true`);
-      const data = await response.json();
+      setIsAuthenticating(true);
 
-      if (data.url) {
-        window.location.href = data.url;
-        return;
+      try {
+        const response = await fetch(`/api/${serviceId}?addAccount=true`);
+        const data = await response.json();
+
+        if (data.url) {
+          // Store the current URL to redirect back after authentication
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("redirectAfterAuth", window.location.href);
+          }
+          window.location.href = data.url;
+          return;
+        }
+        setIsAuthenticating(false);
+      } catch (error) {
+        console.error(`Failed to add new account for ${serviceId}:`, error);
+        setIsAuthenticating(false);
       }
-      setIsAuthenticating(false);
-    } catch (error) {
-      console.error(`Failed to add new account for ${serviceId}:`, error);
-      setIsAuthenticating(false);
-    }
-  };
+    },
+    [isAuthenticating],
+  );
 
   const disconnectService = async (serviceId: string) => {
     try {
@@ -298,11 +419,25 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Memoize the error dialog handler to prevent unnecessary re-renders
+  const handleErrorDialogChange = useCallback(
+    (open: boolean) => {
+      console.log("Error dialog state changing to:", open);
+      setErrorDialogOpen(open);
+
+      // If closing the dialog and we were in an authentication process, reset the state
+      if (!open && isAuthenticating) {
+        setIsAuthenticating(false);
+      }
+    },
+    [isAuthenticating],
+  );
+
   return (
     <>
       <ErrorDialog
         open={errorDialogOpen}
-        onOpenChange={setErrorDialogOpen}
+        onOpenChange={handleErrorDialogChange}
         title={errorTitle}
         message={errorMessage}
       />

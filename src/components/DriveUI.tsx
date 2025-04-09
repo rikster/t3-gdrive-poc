@@ -148,6 +148,7 @@ export function DriveUI({
           onDisconnectAccount={handleDisconnectAccount}
           onServiceSelect={handleServiceSelect}
           onAddAccount={handleAddAccount}
+          isAuthenticating={isAuthenticating}
         />
 
         <div className="mx-auto max-w-6xl">
