@@ -3,24 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDrive } from "~/contexts/DriveContext";
-
-// Add explicit export
-export interface DriveItem {
-  id: string;
-  name: string;
-  type: "file" | "folder";
-  modifiedAt: string;
-  parentId: string | null;
-  service?: string;
-  accountId?: string;
-}
-
-export interface BreadcrumbItem {
-  id: string;
-  name: string;
-  service?: string;
-  accountId?: string;
-}
+import type { DriveItem, BreadcrumbItem } from "~/types/drive";
 
 export function useDriveNavigation() {
   const router = useRouter();

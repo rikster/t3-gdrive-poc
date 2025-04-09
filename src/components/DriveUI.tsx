@@ -18,24 +18,8 @@ import { DriveErrorState } from "./DriveErrorState";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDriveNavigation } from "~/hooks/useDriveNavigation";
 
-interface DriveItem {
-  id: string;
-  name: string;
-  type: "file" | "folder";
-  size?: string;
-  modifiedAt: string;
-  parentId: string | null;
-  service?: string; // Added to track which service the item comes from
-  accountId?: string;
-  accountName?: string;
-  accountEmail?: string;
-}
-
-interface DriveUIProps {
-  items?: DriveItem[];
-  loading?: boolean;
-  error?: string | null;
-}
+import type { DriveItem } from "~/types/drive";
+import type { DriveUIProps } from "~/types/ui";
 
 export function DriveUI({
   items: initialItems,

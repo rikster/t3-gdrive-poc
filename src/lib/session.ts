@@ -1,21 +1,6 @@
 import { cookies } from "next/headers";
-
-export interface TokenData {
-  access_token: string;
-  refresh_token?: string;
-  scope: string;
-  token_type: string;
-  expiry_date: number;
-}
-
-export interface ServiceAccount {
-  id: string; // Unique identifier for the account
-  service: ServiceType;
-  name?: string; // Display name for the account (e.g., "Work Google Drive")
-  email?: string; // User's email for this account
-}
-
-export type ServiceType = "google" | "onedrive" | "dropbox";
+import type { TokenData } from "~/types/auth";
+import type { ServiceAccount, ServiceType } from "~/types/services";
 
 // Get stored tokens for a specific service account
 export async function getStoredTokens(

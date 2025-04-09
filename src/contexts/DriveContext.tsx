@@ -8,9 +8,11 @@ import React, {
   ReactNode,
 } from "react";
 import { ErrorDialog } from "~/components/ErrorDialog";
-import { ServiceType, ServiceAccount } from "~/lib/session";
+import type { ServiceType, ServiceAccount } from "~/types/services";
 import { useRouter } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
+
+import type { DriveItem } from "~/types/drive";
 
 export interface DriveContextType {
   isAuthenticated: boolean;
@@ -27,18 +29,7 @@ export interface DriveContextType {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   isSearching: boolean;
-  searchResults: Array<{
-    id: string;
-    name: string;
-    type: "file" | "folder";
-    size?: string;
-    modifiedAt: string;
-    parentId: string | null;
-    service?: string;
-    accountId?: string;
-    accountName?: string;
-    accountEmail?: string;
-  }>;
+  searchResults: DriveItem[];
   performSearch: (query: string) => Promise<void>;
   clearSearch: () => void;
   isRecursiveSearch: boolean;
@@ -84,20 +75,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<
-    Array<{
-      id: string;
-      name: string;
-      type: "file" | "folder";
-      size?: string;
-      modifiedAt: string;
-      parentId: string | null;
-      service?: string;
-      accountId?: string;
-      accountName?: string;
-      accountEmail?: string;
-    }>
-  >([]);
+  const [searchResults, setSearchResults] = useState<DriveItem[]>([]);
   const [isRecursiveSearch, setIsRecursiveSearch] = useState(true);
 
   useEffect(() => {

@@ -11,13 +11,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { type ServiceType } from "~/lib/session";
-
-export interface Service {
-  id: string;
-  name: string;
-  icon?: React.ReactNode;
-}
+import type { ServiceType, Service } from "~/types/services";
 
 export interface AddServiceButtonProps {
   /** Callback function when a service is selected */
