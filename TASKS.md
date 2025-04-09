@@ -10,13 +10,13 @@
   - [x] Create DriveToolbar component (search, filters, view options)
   - [x] Only allow for one instance of a service account at a time.
     - [x] eg.Only allow for one instance of Google Drive - rhounslow@gmail.com
-  - [x Create DriveEmptyState component (for empty folders/search results)
+  - [x] Create DriveEmptyState component (for empty folders/search results)
   - [x] Create DriveErrorState component (for error handling)
 
 ### Logic Extraction
 
-- [ ] Extract complex logic into custom hooks
-  - [ ] Create useDriveNavigation hook (folder navigation, breadcrumb management)
+- [x] Extract complex logic into custom hooks
+  - [x] Create useDriveNavigation hook (folder navigation, breadcrumb management)
   - [ ] Create useDriveItems hook (fetching and filtering items)
   - [ ] Create useDriveSearch hook (search functionality)
   - [ ] Create useDriveUpload hook (file upload operations)
@@ -30,8 +30,8 @@
 
 ### State Management
 
-- [ ] Improve state management
-  - [ ] Reduce local component state in favor of context
+- [x] Improve state management
+  - [x] Reduce local component state in favor of context
   - [ ] Consider using a more robust state management solution for complex state
   - [ ] Implement proper loading/error states with skeleton loaders
 
@@ -45,8 +45,8 @@
 
 ### Error Handling
 
-- [ ] Improve error handling
-  - [ ] Create a consistent error handling strategy
+- [x] Improve error handling
+  - [x] Create a consistent error handling strategy
   - [ ] Add retry mechanisms for failed API calls
   - [ ] Implement proper error boundaries
 
