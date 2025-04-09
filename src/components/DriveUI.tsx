@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Table,
   TableHeader,
@@ -123,14 +123,32 @@ export function DriveUI({
     // Note: We removed the navigateToRoot call here as it was causing an infinite loop
   }, [currentFolder, searchQuery, isRecursiveSearch, clearSearch]);
 
+  // Use a ref to track previous authentication state
+  const prevAuthRef = useRef(isAuthenticated);
+
   // Clear search input and reset search when logging out
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Only run this effect when authentication state changes from true to false
+    const wasAuthenticated = prevAuthRef.current;
+    const isNowAuthenticated = isAuthenticated;
+
+    // Update the ref for next time
+    prevAuthRef.current = isNowAuthenticated;
+
+    // Only perform actions when transitioning from authenticated to not authenticated
+    if (wasAuthenticated && !isNowAuthenticated) {
       setSearchInputValue("");
       clearSearch();
-      navigateToRoot();
+
+      // Only navigate to root if we're not already there
+      if (currentFolder !== "root") {
+        // Use setTimeout to break the potential render cycle
+        setTimeout(() => {
+          navigateToRoot();
+        }, 0);
+      }
     }
-  }, [isAuthenticated, clearSearch, navigateToRoot]);
+  }, [isAuthenticated, clearSearch, navigateToRoot, currentFolder]);
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-black dark:bg-gray-950 dark:text-white">

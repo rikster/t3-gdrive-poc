@@ -95,7 +95,25 @@ export function useDriveNavigation() {
       modifiedAt: "",
       parentId: null,
     };
-    handleFolderClick(rootFolder);
+
+    // Update state directly without triggering additional effects
+    setCurrentFolder("root");
+    setCurrentFolderService(null);
+    setCurrentAccountId(null);
+    setBreadcrumbPath([]);
+
+    // Update URL without using handleFolderClick to avoid potential circular dependencies
+    try {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("folderId", "root");
+      params.delete("service");
+      params.delete("accountId");
+
+      const newUrl = `/?${params.toString()}`;
+      window.history.pushState({}, "", newUrl);
+    } catch (error) {
+      console.error("Failed to update URL in navigateToRoot:", error);
+    }
   };
 
   // Handle URL-based navigation - only run on initial mount and when searchParams changes
@@ -130,13 +148,32 @@ export function useDriveNavigation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
+  // Use a ref to track previous authentication state
+  const prevAuthRef = useRef(isAuthenticated);
+
   // Reset navigation state on logout
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Only run this effect when authentication state changes from true to false
+    const wasAuthenticated = prevAuthRef.current;
+    const isNowAuthenticated = isAuthenticated;
+
+    // Update the ref for next time
+    prevAuthRef.current = isNowAuthenticated;
+
+    // Only perform actions when transitioning from authenticated to not authenticated
+    if (wasAuthenticated && !isNowAuthenticated) {
+      // Use direct state updates instead of navigateToRoot to avoid circular dependencies
       setCurrentFolder("root");
       setCurrentFolderService(null);
       setCurrentAccountId(null);
       setBreadcrumbPath([]);
+
+      // Update URL directly
+      try {
+        window.history.pushState({}, "", "/");
+      } catch (error) {
+        console.error("Failed to update URL during logout:", error);
+      }
     }
   }, [isAuthenticated]);
 

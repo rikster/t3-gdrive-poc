@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useDrive } from "~/contexts/DriveContext";
 import { useDriveNavigation } from "./useDriveNavigation";
 import type { DriveItem } from "~/types/drive";
@@ -317,12 +317,21 @@ export function useDriveItems(
 
   // Fetch files when dependencies change
   useEffect(() => {
+    // Skip if we're using initial items from props
+    if (initialItems) {
+      return;
+    }
+
     if (isAuthenticated) {
       let isMounted = true;
+      let isLoading = false;
 
       const doFetch = async () => {
-        if (isMounted) {
+        // Prevent multiple simultaneous fetches
+        if (isMounted && !isLoading) {
+          isLoading = true;
           await fetchFiles(currentFolder);
+          isLoading = false;
         }
       };
 
@@ -338,6 +347,7 @@ export function useDriveItems(
     serviceAccounts,
     currentAccountId,
     currentFolderService,
+    initialItems,
   ]);
 
   // Effect for local filtering (non-recursive)
@@ -366,9 +376,15 @@ export function useDriveItems(
   }, [searchResults, isRecursiveSearch]);
 
   // Initialize filteredItems when items change and no search is active
+  // Use a ref to track if we've already set filtered items to avoid unnecessary updates
+  const hasSetFilteredItemsRef = useRef(false);
+
   useEffect(() => {
-    if (!searchQuery) {
+    // Only update filtered items if there's no search query
+    // or if we haven't set them yet
+    if (!searchQuery || !hasSetFilteredItemsRef.current) {
       setFilteredItems(items);
+      hasSetFilteredItemsRef.current = true;
     }
   }, [items, searchQuery]);
 

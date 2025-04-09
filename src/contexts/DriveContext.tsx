@@ -7,6 +7,7 @@ import React, {
   useEffect,
   ReactNode,
   useCallback,
+  useRef,
 } from "react";
 import { ErrorDialog } from "~/components/ErrorDialog";
 import type { ServiceAccount } from "~/types/services";
@@ -211,9 +212,14 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // We've simplified the approach to avoid infinite loops
+
+  // Use a more simplified approach with useEffect
   useEffect(() => {
+    // Only run this effect when isSignedIn changes
     const checkAuthStatus = async () => {
       if (!isSignedIn) {
+        // If not signed in, reset all auth state
         setIsAuthenticated(false);
         setActiveServices([]);
         setServiceAccounts([]);
@@ -227,22 +233,41 @@ export function DriveProvider({ children }: { children: ReactNode }) {
           activeServices?: string[];
           serviceAccounts?: ServiceAccount[];
         };
-        setIsAuthenticated(data.isAuthenticated);
+
+        // Only update if the authentication state actually changed
+        if (data.isAuthenticated !== isAuthenticated) {
+          setIsAuthenticated(data.isAuthenticated);
+        }
 
         if (data.activeServices && Array.isArray(data.activeServices)) {
-          setActiveServices(data.activeServices);
+          // Compare arrays before updating state
+          const servicesChanged =
+            data.activeServices.length !== activeServices.length ||
+            data.activeServices.some((s, i) => activeServices[i] !== s);
 
-          if (data.activeServices.length > 0 && !currentService) {
-            // Ensure we have a valid string before setting current service
-            const firstService = data.activeServices[0];
-            if (typeof firstService === "string") {
-              setCurrentService(firstService);
+          if (servicesChanged) {
+            setActiveServices(data.activeServices);
+
+            if (data.activeServices.length > 0 && !currentService) {
+              // Ensure we have a valid string before setting current service
+              const firstService = data.activeServices[0];
+              if (typeof firstService === "string") {
+                setCurrentService(firstService);
+              }
             }
           }
         }
 
         if (data.serviceAccounts && Array.isArray(data.serviceAccounts)) {
-          setServiceAccounts(data.serviceAccounts);
+          // Only update if the accounts have changed
+          const accountsChanged =
+            data.serviceAccounts.length !== serviceAccounts.length ||
+            JSON.stringify(data.serviceAccounts) !==
+              JSON.stringify(serviceAccounts);
+
+          if (accountsChanged) {
+            setServiceAccounts(data.serviceAccounts);
+          }
         }
       } catch (error) {
         console.error("Failed to check auth status:", error);
@@ -251,7 +276,9 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     };
 
     checkAuthStatus();
-  }, [currentService, isSignedIn]);
+    // Include necessary dependencies but use ESLint disable to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn]);
 
   const authenticateService = useCallback(
     async (serviceId: string) => {
@@ -309,68 +336,81 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     [isAuthenticating],
   );
 
-  const disconnectService = async (serviceId: string) => {
-    try {
-      await fetch(`/api/auth/disconnect?service=${serviceId}`, {
-        method: "POST",
-      });
+  const disconnectService = useCallback(
+    async (serviceId: string) => {
+      try {
+        await fetch(`/api/auth/disconnect?service=${serviceId}`, {
+          method: "POST",
+        });
 
-      setActiveServices((prevServices) =>
-        prevServices.filter((service) => service !== serviceId),
-      );
-
-      setServiceAccounts((prevAccounts) =>
-        prevAccounts.filter((account) => account.service !== serviceId),
-      );
-
-      if (currentService === serviceId) {
-        setCurrentService(null);
-      }
-
-      if (activeServices.length <= 1) {
-        setIsAuthenticated(false);
-      }
-    } catch (error) {
-      console.error("Failed to disconnect service:", error);
-    }
-  };
-
-  const disconnectAccount = async (serviceId: string, accountId: string) => {
-    try {
-      await fetch(
-        `/api/auth/disconnect?service=${serviceId}&accountId=${accountId}`,
-        { method: "POST" },
-      );
-
-      setServiceAccounts((prevAccounts) =>
-        prevAccounts.filter(
-          (account) =>
-            !(account.service === serviceId && account.id === accountId),
-        ),
-      );
-
-      const remainingAccountsForService = serviceAccounts.filter(
-        (account) => account.service === serviceId && account.id !== accountId,
-      );
-
-      if (remainingAccountsForService.length === 0) {
         setActiveServices((prevServices) =>
           prevServices.filter((service) => service !== serviceId),
+        );
+
+        setServiceAccounts((prevAccounts) =>
+          prevAccounts.filter((account) => account.service !== serviceId),
         );
 
         if (currentService === serviceId) {
           setCurrentService(null);
         }
-      }
 
-      const newTotalAccounts = serviceAccounts.length - 1;
-      if (newTotalAccounts <= 0) {
-        setIsAuthenticated(false);
+        // Check if this was the last service
+        const remainingServices = activeServices.filter((s) => s !== serviceId);
+        if (remainingServices.length === 0) {
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        console.error("Failed to disconnect service:", error);
       }
-    } catch (error) {
-      console.error("Failed to disconnect account:", error);
-    }
-  };
+    },
+    [activeServices, currentService],
+  );
+
+  const disconnectAccount = useCallback(
+    async (serviceId: string, accountId: string) => {
+      try {
+        await fetch(
+          `/api/auth/disconnect?service=${serviceId}&accountId=${accountId}`,
+          { method: "POST" },
+        );
+
+        // Update service accounts state
+        setServiceAccounts((prevAccounts) => {
+          const newAccounts = prevAccounts.filter(
+            (account) =>
+              !(account.service === serviceId && account.id === accountId),
+          );
+
+          // Check if this was the last account for this service
+          const remainingAccountsForService = newAccounts.filter(
+            (account) => account.service === serviceId,
+          );
+
+          // If no accounts left for this service, update active services
+          if (remainingAccountsForService.length === 0) {
+            setActiveServices((prevServices) =>
+              prevServices.filter((service) => service !== serviceId),
+            );
+
+            if (currentService === serviceId) {
+              setCurrentService(null);
+            }
+          }
+
+          // If no accounts left at all, set not authenticated
+          if (newAccounts.length === 0) {
+            setIsAuthenticated(false);
+          }
+
+          return newAccounts;
+        });
+      } catch (error) {
+        console.error("Failed to disconnect account:", error);
+      }
+    },
+    [serviceAccounts, currentService],
+  );
 
   const logout = () => {
     if (signOut) signOut();
