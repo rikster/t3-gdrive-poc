@@ -7,6 +7,7 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
+import { ErrorDialog } from "~/components/ErrorDialog";
 import { ServiceType, ServiceAccount } from "~/lib/session";
 import { useRouter } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
@@ -102,6 +103,32 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setIsClerkAuthenticated(!!isSignedIn);
   }, [isSignedIn]);
+
+  // State for error dialog
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [errorTitle, setErrorTitle] = useState("Error");
+
+  // Check for error parameters in the URL (for duplicate account errors)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      const error = url.searchParams.get("error");
+      const message = url.searchParams.get("message");
+
+      if (error === "duplicate_account" && message) {
+        // Set error message and show dialog
+        setErrorTitle("Duplicate Account");
+        setErrorMessage(message);
+        setErrorDialogOpen(true);
+
+        // Remove the error parameters from the URL
+        url.searchParams.delete("error");
+        url.searchParams.delete("message");
+        window.history.replaceState({}, "", url.toString());
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -294,31 +321,39 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <DriveContext.Provider
-      value={{
-        isAuthenticated,
-        isClerkAuthenticated,
-        authenticateService,
-        addNewAccount,
-        disconnectService,
-        disconnectAccount,
-        logout,
-        currentService,
-        activeServices,
-        serviceAccounts,
-        isAuthenticating,
-        searchQuery,
-        setSearchQuery,
-        isSearching,
-        searchResults,
-        performSearch,
-        clearSearch,
-        isRecursiveSearch,
-        openFile,
-      }}
-    >
-      {children}
-    </DriveContext.Provider>
+    <>
+      <ErrorDialog
+        open={errorDialogOpen}
+        onOpenChange={setErrorDialogOpen}
+        title={errorTitle}
+        message={errorMessage}
+      />
+      <DriveContext.Provider
+        value={{
+          isAuthenticated,
+          isClerkAuthenticated,
+          authenticateService,
+          addNewAccount,
+          disconnectService,
+          disconnectAccount,
+          logout,
+          currentService,
+          activeServices,
+          serviceAccounts,
+          isAuthenticating,
+          searchQuery,
+          setSearchQuery,
+          isSearching,
+          searchResults,
+          performSearch,
+          clearSearch,
+          isRecursiveSearch,
+          openFile,
+        }}
+      >
+        {children}
+      </DriveContext.Provider>
+    </>
   );
 }
 

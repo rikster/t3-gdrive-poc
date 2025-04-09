@@ -8,8 +8,10 @@
   - [x] Create DriveHeader component (navigation, breadcrumbs, actions)
   - [x] Create DriveTable component (file/folder listing)
   - [x] Create DriveToolbar component (search, filters, view options)
-  - [ ] Create DriveEmptyState component (for empty folders/search results)
-  - [ ] Create DriveErrorState component (for error handling)
+  - [x] Only allow for one instance of a service account at a time.
+    - [x] eg.Only allow for one instance of Google Drive - rhounslow@gmail.com
+  - [x Create DriveEmptyState component (for empty folders/search results)
+  - [x] Create DriveErrorState component (for error handling)
 
 ### Logic Extraction
 

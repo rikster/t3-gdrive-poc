@@ -6,6 +6,7 @@ import {
   storeTokens,
   storeAccountMetadata,
   generateAccountId,
+  findExistingAccountByEmail,
 } from "~/lib/session";
 
 // Helper function to create an OAuth2 client
@@ -90,9 +91,31 @@ export async function GET(request: NextRequest) {
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
 
+    // Get user info for this account
+    const userInfo = await getUserInfo(oauth2Client);
+
+    // If this is a new account and we have an email, check if it already exists
+    if (parsedState.addAccount && userInfo && userInfo.email) {
+      const existingAccount = await findExistingAccountByEmail(
+        "google",
+        userInfo.email,
+      );
+
+      if (existingAccount) {
+        // Account with this email already exists, redirect to home with error message
+        const errorUrl = new URL("/", request.url);
+        errorUrl.searchParams.set("error", "duplicate_account");
+        errorUrl.searchParams.set(
+          "message",
+          `An account for ${userInfo.email} already exists`,
+        );
+        return Response.redirect(errorUrl);
+      }
+    }
+
     // If this is a new account, generate a new accountId
     const finalAccountId = parsedState.addAccount
-      ? generateAccountId("google")
+      ? generateAccountId("google", userInfo?.email)
       : parsedState.accountId;
 
     // Format tokens to match our TokenData interface
@@ -107,8 +130,7 @@ export async function GET(request: NextRequest) {
     // Store tokens with the appropriate accountId
     await storeTokens(formattedTokens, "google", finalAccountId);
 
-    // Get user info for this account to store with tokens
-    const userInfo = await getUserInfo(oauth2Client);
+    // Store account metadata
     if (userInfo) {
       await storeAccountMetadata(
         {
