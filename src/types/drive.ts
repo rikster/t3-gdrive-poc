@@ -2,8 +2,17 @@
  * Drive-related type definitions
  */
 
+import {
+  DriveItemUnion,
+  FileItem,
+  FolderItem,
+  isFileItem,
+  isFolderItem,
+} from "./items";
+
 /**
  * Represents an item (file or folder) in a cloud storage service
+ * @deprecated Use DriveItemUnion from './items' instead
  */
 export interface DriveItem {
   id: string;
@@ -19,6 +28,9 @@ export interface DriveItem {
   path?: string; // Path to the file/folder for context
 }
 
+// Re-export the new item types for easier imports
+export { DriveItemUnion, FileItem, FolderItem, isFileItem, isFolderItem };
+
 /**
  * Represents an item in the breadcrumb navigation path
  */
@@ -31,6 +43,7 @@ export interface BreadcrumbItem {
 
 /**
  * Represents a search result from any cloud storage service
+ * @deprecated Use DriveItemUnion from './items' instead
  */
 export interface SearchResult {
   id: string;

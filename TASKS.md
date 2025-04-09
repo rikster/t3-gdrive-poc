@@ -25,7 +25,7 @@
 
 - [x] Implement proper TypeScript interfaces
   - [x] Move DriveItem and related interfaces to a separate types file
-  - [ ] Create proper discriminated unions for different item types
+  - [x] Create proper discriminated unions for different item types
   - [x] Add comprehensive JSDoc comments for better developer experience
 
 ### State Management
