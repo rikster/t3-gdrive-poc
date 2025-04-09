@@ -14,6 +14,7 @@ import { DriveItemRow } from "./DriveItemRow";
 import { useDrive } from "~/contexts/DriveContext";
 import { LoadingSpinner } from "./ui/loading-spinner";
 import { DriveBreadcrumb } from "./DriveBreadcrumb";
+import { DriveErrorState } from "./DriveErrorState";
 import { useRouter, useSearchParams } from "next/navigation";
 
 interface DriveItem {
@@ -568,9 +569,10 @@ export function DriveUI({
           />
           <div className="overflow-hidden rounded-lg border bg-white dark:border-gray-800 dark:bg-gray-950">
             {error && (
-              <div className="border-b border-red-100 bg-red-50 p-4 text-red-600 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400">
-                <p>{error}</p>
-              </div>
+              <DriveErrorState
+                error={error}
+                onRetry={() => fetchFiles(currentFolder)}
+              />
             )}
             <div className="relative">
               {isLoading || isAuthenticating || isSearching ? (
