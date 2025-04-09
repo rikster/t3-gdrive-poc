@@ -28,6 +28,7 @@ interface HeaderProps {
   onDisconnectAccount: (serviceId: string, accountId: string) => void;
   onServiceSelect: (service: string) => void;
   onAddAccount: (service: string) => void;
+  isAuthenticating?: boolean;
 }
 
 export function Header({
@@ -41,31 +42,34 @@ export function Header({
   onDisconnectService,
   onDisconnectAccount,
   onServiceSelect,
-  onAddAccount
+  onAddAccount,
+  isAuthenticating = false,
 }: HeaderProps) {
   return (
-    <div className="flex flex-col gap-4 justify-between items-start mx-auto mb-6 max-w-6xl sm:flex-row sm:items-center sm:gap-0">
-      <div className="flex justify-between items-center w-full sm:w-auto">
-        <div className="flex gap-3 items-center">
+    <div className="mx-auto mb-6 flex max-w-6xl flex-col items-start justify-between gap-4 sm:flex-row sm:items-center sm:gap-0">
+      <div className="flex w-full items-center justify-between sm:w-auto">
+        <div className="flex items-center gap-3">
           <div className="flex-shrink-0">
-            <Image 
-              src="/stratafusion_icon_256x256.ico" 
-              alt="StrataFusion Logo" 
+            <Image
+              src="/stratafusion_icon_256x256.ico"
+              alt="StrataFusion Logo"
               width={48}
               height={48}
-              className="w-12 h-12 rounded-md"
+              className="h-12 w-12 rounded-md"
             />
           </div>
           <div>
             <h1 className="text-2xl font-bold">StrataFusion</h1>
-            <p className="text-sm text-muted-foreground">Unified Cloud Storage</p>
+            <p className="text-muted-foreground text-sm">
+              Unified Cloud Storage
+            </p>
           </div>
         </div>
         <div className="sm:hidden">
           <ThemeToggle />
         </div>
       </div>
-      <div className="flex gap-4 items-center w-full sm:w-auto">
+      <div className="flex w-full items-center gap-4 sm:w-auto">
         <div className="hidden sm:block">
           <ThemeToggle />
         </div>
@@ -82,6 +86,7 @@ export function Header({
           onServiceSelect={onServiceSelect}
           onAddAccount={onAddAccount}
           activeServices={activeServices}
+          isAuthenticating={isAuthenticating}
         />
 
         {isAuthenticated && (
@@ -89,10 +94,10 @@ export function Header({
         )}
 
         {/* Service selector for multiple services */}
-        <ServiceSelector 
-          activeServices={activeServices} 
+        <ServiceSelector
+          activeServices={activeServices}
           serviceAccounts={serviceAccounts}
-          onDisconnectService={onDisconnectService} 
+          onDisconnectService={onDisconnectService}
           onDisconnectAccount={onDisconnectAccount}
         />
 

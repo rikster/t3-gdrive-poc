@@ -7,6 +7,7 @@ import {
   storeAccountMetadata,
   generateAccountId,
   getAccountMetadata,
+  findExistingAccountByEmail,
 } from "~/lib/session";
 
 // Dropbox API endpoints
@@ -73,11 +74,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // If this is a new account, generate a new accountId
-    const finalAccountId = parsedState.addAccount
-      ? generateAccountId("dropbox")
-      : parsedState.accountId;
-
     // Exchange code for tokens
     const tokenResponse = await fetch(TOKEN_URL, {
       method: "POST",
@@ -111,13 +107,53 @@ export async function GET(request: NextRequest) {
       expiry_date: Date.now() + (tokenData.expires_in || 14400) * 1000, // Default to 4 hours if not provided
     };
 
+    // Get user info to store with account
+    const userInfo = await getUserInfo(tokens.access_token);
+    console.log("User info for account metadata:", userInfo);
+
+    // If this is a new account and we have an email, check if it already exists
+    if (parsedState.addAccount && userInfo && userInfo.email) {
+      console.log("Checking for existing account with email:", userInfo.email);
+      const existingAccount = await findExistingAccountByEmail(
+        "dropbox",
+        userInfo.email,
+      );
+
+      if (existingAccount) {
+        console.log("Found existing account with same email:", existingAccount);
+        // Account with this email already exists, redirect to home with error message
+        const errorUrl = new URL("/", request.url);
+
+        // Add a timestamp to prevent browser caching issues
+        const timestamp = Date.now();
+
+        // Add error parameters
+        errorUrl.searchParams.set("error", "duplicate_account");
+        errorUrl.searchParams.set(
+          "message",
+          `An account for ${userInfo.email} already exists. Please use a different account.`,
+        );
+        errorUrl.searchParams.set("t", timestamp.toString());
+
+        // Add a special flag to indicate this is a critical error that should not be ignored
+        errorUrl.searchParams.set("critical", "true");
+
+        console.log(`Redirecting to error URL: ${errorUrl.toString()}`);
+        return Response.redirect(errorUrl, 303); // Use 303 status to ensure GET request
+      }
+    }
+
+    // If this is a new account, generate a new accountId
+    const finalAccountId = parsedState.addAccount
+      ? generateAccountId("dropbox", userInfo?.email)
+      : parsedState.accountId;
+
+    console.log("Using account ID:", finalAccountId);
+
     // Store tokens for future use
     await storeTokens(tokens, "dropbox", finalAccountId);
     console.log("Stored Dropbox tokens");
 
-    // Get user info to store with account
-    const userInfo = await getUserInfo(tokens.access_token);
-    console.log("User info for account metadata:", userInfo);
     if (userInfo) {
       // Make sure to log the exact email value we'll be storing
       const emailValue = userInfo.email || "";

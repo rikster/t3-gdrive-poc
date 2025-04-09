@@ -1,21 +1,6 @@
 import { cookies } from "next/headers";
-
-export interface TokenData {
-  access_token: string;
-  refresh_token?: string;
-  scope: string;
-  token_type: string;
-  expiry_date: number;
-}
-
-export interface ServiceAccount {
-  id: string; // Unique identifier for the account
-  service: ServiceType;
-  name?: string; // Display name for the account (e.g., "Work Google Drive")
-  email?: string; // User's email for this account
-}
-
-export type ServiceType = "google" | "onedrive" | "dropbox";
+import type { TokenData } from "~/types/auth";
+import type { ServiceAccount, ServiceType } from "~/types/services";
 
 // Get stored tokens for a specific service account
 export async function getStoredTokens(
@@ -117,7 +102,7 @@ export async function getAccountMetadata(
 ): Promise<Partial<ServiceAccount> | null> {
   const cookieStore = await cookies();
   const metadataCookie = cookieStore.get(`${service}_${accountId}_metadata`);
-  
+
   if (!metadataCookie) return null;
 
   try {
@@ -188,6 +173,26 @@ export async function updateExpiryDate(
   await storeTokens(updatedTokens, service, accountId);
 }
 
+// Check if a token is expired
+export function isTokenExpired(token: TokenData): boolean {
+  if (!token.expiry_date) return false;
+
+  // Add a 5-minute buffer to account for clock differences and processing time
+  const bufferTime = 5 * 60 * 1000; // 5 minutes in milliseconds
+  return token.expiry_date < Date.now() + bufferTime;
+}
+
+// Check if a token is valid (has required fields and is not expired)
+export function isTokenValid(token: TokenData | null): boolean {
+  if (!token || !token.access_token) return false;
+
+  // If there's no expiry date, assume it's valid
+  if (!token.expiry_date) return true;
+
+  // Check if token is expired
+  return !isTokenExpired(token);
+}
+
 // Generate a unique account ID
 export function generateAccountId(
   service: ServiceType,
@@ -198,4 +203,21 @@ export function generateAccountId(
   const emailHash = email ? email.split("@")[0] : "";
 
   return `${service}_${emailHash || "user"}_${timestamp}_${random}`;
+}
+
+// Check if an account with the given email already exists for a service
+export async function findExistingAccountByEmail(
+  service: ServiceType,
+  email: string,
+): Promise<ServiceAccount | null> {
+  if (!email) return null;
+
+  const accounts = await getActiveServiceAccounts();
+
+  // Find an account with the same service and email
+  const existingAccount = accounts.find(
+    (account) => account.service === service && account.email === email,
+  );
+
+  return existingAccount || null;
 }

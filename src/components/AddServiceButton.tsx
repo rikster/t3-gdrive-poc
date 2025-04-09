@@ -11,13 +11,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { type ServiceType } from "~/lib/session";
-
-export interface Service {
-  id: string;
-  name: string;
-  icon?: React.ReactNode;
-}
+import type { ServiceType, Service } from "~/types/services";
 
 export interface AddServiceButtonProps {
   /** Callback function when a service is selected */
@@ -28,6 +22,8 @@ export interface AddServiceButtonProps {
   availableServices?: Service[];
   /** Currently active services */
   activeServices?: string[];
+  /** Whether authentication is in progress */
+  isAuthenticating?: boolean;
 }
 
 const defaultServices: Service[] = [
@@ -41,6 +37,7 @@ export function AddServiceButton({
   onAddAccount,
   availableServices = defaultServices,
   activeServices = [],
+  isAuthenticating = false,
 }: AddServiceButtonProps) {
   // State for dialog
   const [isOpen, setIsOpen] = React.useState(false);
@@ -145,6 +142,7 @@ export function AddServiceButton({
                       variant="outline"
                       className="w-full justify-start"
                       onClick={() => handleAddAccount(service.id)}
+                      disabled={isAuthenticating}
                     >
                       {service.icon && (
                         <span className="mr-2 flex h-4 w-4 items-center justify-center">
