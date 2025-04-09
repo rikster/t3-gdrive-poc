@@ -18,7 +18,7 @@
 - [x] Extract complex logic into custom hooks
   - [x] Create useDriveNavigation hook (folder navigation, breadcrumb management)
   - [x] Create useDriveItems hook (fetching and filtering items)
-  - [ ] Create useDriveSearch hook (search functionality)
+  - [x] Create useDriveSearch hook (search functionality)
   - [ ] Create useDriveUpload hook (file upload operations)
 
 ### TypeScript Improvements
@@ -55,6 +55,7 @@
 
 - [ ] Add comprehensive testing
   - [x] Write unit tests for useDriveNavigation and useDriveItems hooks
+    - [x] Write unit tests for useDriveSearch hook
     - [ ] Write unit tests for remaining hooks
   - [ ] Write component tests for UI elements
   - [ ] Write integration tests for the full DriveUI component

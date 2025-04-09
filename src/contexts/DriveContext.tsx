@@ -12,6 +12,7 @@ import { ErrorDialog } from "~/components/ErrorDialog";
 import type { ServiceAccount } from "~/types/services";
 import { useRouter } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
+import { useDriveSearch } from "~/hooks/useDriveSearch";
 
 import type { DriveItem } from "~/types/drive";
 
@@ -74,9 +75,14 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   const [activeServices, setActiveServices] = useState<string[]>([]);
   const [serviceAccounts, setServiceAccounts] = useState<ServiceAccount[]>([]);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<DriveItem[]>([]);
+  const {
+    searchQuery,
+    setSearchQuery,
+    isSearching,
+    searchResults,
+    performSearch,
+    clearSearch,
+  } = useDriveSearch();
   const [isRecursiveSearch] = useState(true);
 
   useEffect(() => {
@@ -370,32 +376,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     if (signOut) signOut();
   };
 
-  const performSearch = async (query: string) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
-    setIsSearching(true);
-    setSearchQuery(query);
-
-    try {
-      const response = await fetch(
-        `/api/search?q=${encodeURIComponent(query)}`,
-      );
-      const data = await response.json();
-      setSearchResults(data.files || []);
-    } catch (error) {
-      console.error("Search error:", error);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const clearSearch = () => {
-    setSearchQuery("");
-    setSearchResults([]);
-  };
+  // Search functionality is now handled by the useDriveSearch hook
 
   const openFile = async (
     fileId: string,
