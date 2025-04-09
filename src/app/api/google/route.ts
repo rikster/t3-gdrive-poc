@@ -7,6 +7,7 @@ import {
   storeAccountMetadata,
   generateAccountId,
   findExistingAccountByEmail,
+  isTokenValid,
 } from "~/lib/session";
 
 // Helper function to create an OAuth2 client
@@ -39,10 +40,54 @@ export async function GET(request: NextRequest) {
   if (!addAccount) {
     const storedTokens = await getStoredTokens("google", accountId);
 
-    // If we have stored tokens and no code is provided, use the stored tokens
+    // If we have stored tokens and no code is provided, check if they're valid
     if (storedTokens && !code) {
+      // First check if the token is valid
+      const tokenValid = isTokenValid(storedTokens);
       try {
-        oauth2Client.setCredentials(storedTokens);
+        // If token is not valid but we have a refresh token, try to refresh it
+        if (!tokenValid && storedTokens.refresh_token) {
+          console.log("Token expired, attempting to refresh...");
+          try {
+            // Try to refresh the token using a new OAuth2 client
+            const refreshClient = createOAuth2Client();
+            refreshClient.setCredentials({
+              refresh_token: storedTokens.refresh_token,
+            });
+
+            // Use the refreshAccessToken method instead
+            const response = await refreshClient.refreshAccessToken();
+            const tokens = response.credentials;
+
+            // Update stored tokens with new access token
+            const updatedTokens = {
+              ...storedTokens,
+              access_token: tokens.access_token || storedTokens.access_token,
+              expiry_date: tokens.expiry_date || Date.now() + 3600 * 1000,
+            };
+
+            await storeTokens(updatedTokens, "google", accountId);
+            oauth2Client.setCredentials(updatedTokens);
+            console.log("Token refreshed successfully");
+          } catch (refreshError) {
+            console.error("Error refreshing token:", refreshError);
+            // If refresh fails, redirect to auth
+            const authUrl = oauth2Client.generateAuthUrl({
+              access_type: "offline",
+              scope: SCOPES,
+              state: JSON.stringify({ accountId, addAccount: false }),
+              prompt: "consent",
+            });
+            return Response.json({
+              url: authUrl,
+              error: "Token expired and refresh failed",
+            });
+          }
+        } else {
+          // Token not expired, use it
+          oauth2Client.setCredentials(storedTokens);
+        }
+
         return await listFiles(oauth2Client, folderId, accountId);
       } catch (error) {
         console.error("Error with stored tokens:", error);
@@ -104,12 +149,23 @@ export async function GET(request: NextRequest) {
       if (existingAccount) {
         // Account with this email already exists, redirect to home with error message
         const errorUrl = new URL("/", request.url);
+
+        // Add a timestamp to prevent browser caching issues
+        const timestamp = Date.now();
+
+        // Add error parameters
         errorUrl.searchParams.set("error", "duplicate_account");
         errorUrl.searchParams.set(
           "message",
-          `An account for ${userInfo.email} already exists`,
+          `An account for ${userInfo.email} already exists. Please use a different account.`,
         );
-        return Response.redirect(errorUrl);
+        errorUrl.searchParams.set("t", timestamp.toString());
+
+        // Add a special flag to indicate this is a critical error that should not be ignored
+        errorUrl.searchParams.set("critical", "true");
+
+        console.log(`Redirecting to error URL: ${errorUrl.toString()}`);
+        return Response.redirect(errorUrl, 303); // Use 303 status to ensure GET request
       }
     }
 
@@ -209,41 +265,82 @@ async function listFiles(
   accountId: string = "default",
 ) {
   try {
-    const drive = google.drive({ version: "v3", auth });
-    const response = await drive.files.list({
-      q: folderId === "root" ? "'root' in parents" : `'${folderId}' in parents`,
-      pageSize: 100,
-      fields: "files(id, name, mimeType, modifiedTime, size, parents)",
-    });
-
-    if (!response.data.files) {
-      return Response.json({ files: [] });
+    // Validate auth object
+    if (!auth || !auth.credentials || !auth.credentials.access_token) {
+      console.error("Invalid auth object or missing credentials");
+      return Response.json(
+        { error: "Invalid authentication credentials", files: [] },
+        { status: 401 },
+      );
     }
 
-    // Get user info to include with files
-    const userInfo = await getUserInfo(auth);
-    const userEmail = userInfo?.email || undefined;
+    const drive = google.drive({ version: "v3", auth });
 
-    // Transform the data to a format our UI expects
-    const files = response.data.files.map((file) => ({
-      id: file.id,
-      name: file.name,
-      modifiedAt: file.modifiedTime,
-      parentId: file.parents?.[0] || null,
-      size: file.size
-        ? `${Math.round(parseInt(file.size) / 1024)} KB`
-        : undefined,
-      type:
-        file.mimeType === "application/vnd.google-apps.folder"
-          ? "folder"
-          : "file",
-      accountEmail: userEmail,
-      accountId: accountId,
-    }));
+    try {
+      const response = await drive.files.list({
+        q:
+          folderId === "root"
+            ? "'root' in parents"
+            : `'${folderId}' in parents`,
+        pageSize: 100,
+        fields: "files(id, name, mimeType, modifiedTime, size, parents)",
+      });
 
-    return Response.json({ files });
+      if (!response.data.files) {
+        return Response.json({ files: [] });
+      }
+
+      // Get user info to include with files
+      const userInfo = await getUserInfo(auth);
+      const userEmail = userInfo?.email || undefined;
+
+      // Transform the data to a format our UI expects
+      const files = response.data.files.map((file) => ({
+        id: file.id,
+        name: file.name,
+        modifiedAt: file.modifiedTime,
+        parentId: file.parents?.[0] || null,
+        size: file.size
+          ? `${Math.round(parseInt(file.size) / 1024)} KB`
+          : undefined,
+        type:
+          file.mimeType === "application/vnd.google-apps.folder"
+            ? "folder"
+            : "file",
+        accountEmail: userEmail,
+        accountId: accountId,
+      }));
+
+      return Response.json({ files });
+    } catch (apiError: any) {
+      // Handle specific Google API errors
+      console.error("Google Drive API error:", apiError);
+
+      // Check if it's an auth error
+      if (
+        apiError.code === 401 ||
+        apiError.code === 403 ||
+        (apiError.response &&
+          (apiError.response.status === 401 ||
+            apiError.response.status === 403))
+      ) {
+        // Auth error - token might be invalid or expired
+        return Response.json(
+          { error: "Authentication error. Please sign in again.", files: [] },
+          { status: 401 },
+        );
+      }
+
+      // Other API errors
+      const errorMessage =
+        apiError.message || "Failed to fetch files from Google Drive";
+      return Response.json({ error: errorMessage, files: [] }, { status: 500 });
+    }
   } catch (error) {
-    console.error("Error:", error);
-    return Response.json({ error: "Failed to fetch files" }, { status: 500 });
+    console.error("Unexpected error in listFiles:", error);
+    return Response.json(
+      { error: "An unexpected error occurred while fetching files", files: [] },
+      { status: 500 },
+    );
   }
 }

@@ -114,12 +114,23 @@ export async function GET(request: NextRequest) {
       if (existingAccount) {
         // Account with this email already exists, redirect to home with error message
         const errorUrl = new URL("/", request.url);
+
+        // Add a timestamp to prevent browser caching issues
+        const timestamp = Date.now();
+
+        // Add error parameters
         errorUrl.searchParams.set("error", "duplicate_account");
         errorUrl.searchParams.set(
           "message",
-          `An account for ${userInfo.email} already exists`,
+          `An account for ${userInfo.email} already exists. Please use a different account.`,
         );
-        return Response.redirect(errorUrl);
+        errorUrl.searchParams.set("t", timestamp.toString());
+
+        // Add a special flag to indicate this is a critical error that should not be ignored
+        errorUrl.searchParams.set("critical", "true");
+
+        console.log(`Redirecting to error URL: ${errorUrl.toString()}`);
+        return Response.redirect(errorUrl, 303); // Use 303 status to ensure GET request
       }
     }
 

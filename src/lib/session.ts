@@ -173,6 +173,26 @@ export async function updateExpiryDate(
   await storeTokens(updatedTokens, service, accountId);
 }
 
+// Check if a token is expired
+export function isTokenExpired(token: TokenData): boolean {
+  if (!token.expiry_date) return false;
+
+  // Add a 5-minute buffer to account for clock differences and processing time
+  const bufferTime = 5 * 60 * 1000; // 5 minutes in milliseconds
+  return token.expiry_date < Date.now() + bufferTime;
+}
+
+// Check if a token is valid (has required fields and is not expired)
+export function isTokenValid(token: TokenData | null): boolean {
+  if (!token || !token.access_token) return false;
+
+  // If there's no expiry date, assume it's valid
+  if (!token.expiry_date) return true;
+
+  // Check if token is expired
+  return !isTokenExpired(token);
+}
+
 // Generate a unique account ID
 export function generateAccountId(
   service: ServiceType,

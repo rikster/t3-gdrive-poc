@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useDrive } from "~/contexts/DriveContext";
 import { useDriveNavigation } from "./useDriveNavigation";
 import type { DriveItem } from "~/types/drive";
@@ -17,7 +17,7 @@ interface UseDriveItemsResult {
 export function useDriveItems(
   initialItems?: DriveItem[],
   initialLoading?: boolean,
-  initialError?: string | null
+  initialError?: string | null,
 ): UseDriveItemsResult {
   const {
     isAuthenticated,
@@ -27,17 +27,16 @@ export function useDriveItems(
     searchResults,
   } = useDrive();
 
-  const {
-    currentFolder,
-    currentFolderService,
-    currentAccountId,
-  } = useDriveNavigation();
+  const { currentFolder, currentFolderService, currentAccountId } =
+    useDriveNavigation();
 
   const [items, setItems] = useState<DriveItem[]>(initialItems || []);
   const [filteredItems, setFilteredItems] = useState<DriveItem[]>([]);
   const [isLoading, setIsLoading] = useState(initialLoading ?? false);
   const [error, setError] = useState<string | null>(initialError ?? null);
-  const [serviceItems, setServiceItems] = useState<Record<string, DriveItem[]>>({});
+  const [serviceItems, setServiceItems] = useState<Record<string, DriveItem[]>>(
+    {},
+  );
 
   // Update state when props change
   useEffect(() => {
@@ -81,7 +80,7 @@ export function useDriveItems(
     service: string,
     folderId: string,
     accountId: string = "default",
-  ): Promise<DriveItem[]> => {
+  ): Promise<{ files: DriveItem[]; error?: string; needsAuth?: boolean }> => {
     try {
       console.log(
         `Fetching files from ${service} for folder ${folderId} and account ${accountId}`,
@@ -89,28 +88,62 @@ export function useDriveItems(
       const response = await fetch(
         `/api/${service}?folderId=${folderId}&accountId=${accountId}`,
       );
+
+      // Check for HTTP errors
+      if (!response.ok) {
+        const statusCode = response.status;
+        console.error(`HTTP error ${statusCode} fetching ${service} files`);
+
+        // Handle specific status codes
+        if (statusCode === 401) {
+          // Authentication error
+          try {
+            const errorData = await response.json();
+            if (errorData.url) {
+              // Need to re-authenticate
+              console.log(
+                `Authentication required for ${service}, redirecting...`,
+              );
+              window.location.href = errorData.url;
+              return { files: [], needsAuth: true };
+            }
+            return {
+              files: [],
+              error:
+                errorData.error ||
+                `Authentication error with ${service}. Please sign in again.`,
+            };
+          } catch (parseError) {
+            return {
+              files: [],
+              error: `Authentication error with ${service}. Please sign in again.`,
+            };
+          }
+        }
+
+        return {
+          files: [],
+          error: `Error fetching files from ${service} (HTTP ${statusCode})`,
+        };
+      }
+
       const data = await response.json();
 
       if (data.url) {
         // Need to authenticate
+        console.log(`Authentication required for ${service}, redirecting...`);
         window.location.href = data.url;
-        return [];
+        return { files: [], needsAuth: true };
       }
 
       if (data.error) {
         console.error(`Error fetching ${service} files:`, data.error);
-        return [];
+        return { files: [], error: data.error };
       }
 
       // Ensure data.files is always an array and add service and accountId properties
       const files = Array.isArray(data.files)
         ? data.files.map((file: DriveItem) => {
-            console.log(
-              `File from ${service}:`,
-              file.name,
-              "Email:",
-              file.accountEmail,
-            );
             return {
               ...file,
               service,
@@ -123,10 +156,25 @@ export function useDriveItems(
           })
         : [];
 
-      return files;
+      // Log the first file for debugging
+      if (files.length > 0) {
+        console.log(
+          `First file from ${service}:`,
+          files[0].name,
+          "Email:",
+          files[0].accountEmail,
+        );
+      } else {
+        console.log(`No files found for ${service} in folder ${folderId}`);
+      }
+
+      return { files };
     } catch (err) {
       console.error(`Failed to fetch files from ${service}:`, err);
-      return [];
+      return {
+        files: [],
+        error: `Failed to fetch files from ${service}. Please try again later.`,
+      };
     }
   };
 
@@ -141,6 +189,8 @@ export function useDriveItems(
 
     try {
       let allFiles: DriveItem[] = [];
+      let hasErrors = false;
+      let errorMessage = "";
 
       // If we're at root level or no specific service is set, fetch from all accounts
       if (folderId === "root" || (!currentFolderService && !currentAccountId)) {
@@ -148,11 +198,27 @@ export function useDriveItems(
 
         // Create a promise for each account
         const allFilesPromises = serviceAccounts.map(async (account) => {
-          const files = await fetchFilesFromService(
+          const result = await fetchFilesFromService(
             account.service,
             "root",
             account.id,
           );
+
+          // Check for errors
+          if (result.error) {
+            hasErrors = true;
+            errorMessage = result.error;
+            console.error(
+              `Error fetching ${account.service} files:`,
+              result.error,
+            );
+            return [];
+          }
+
+          // Check if authentication is needed
+          if (result.needsAuth) {
+            return [];
+          }
 
           // Group files by service for proper display
           if (!serviceResults[account.service]) {
@@ -160,7 +226,7 @@ export function useDriveItems(
           }
 
           // Add account info to each file
-          const filesWithAccount = files.map((file) => ({
+          const filesWithAccount = result.files.map((file) => ({
             ...file,
             accountName: account.name ?? getServiceName(account.service),
             accountEmail: account.email,
@@ -180,33 +246,54 @@ export function useDriveItems(
         setServiceItems(serviceResults);
       } else if (currentFolderService && currentAccountId) {
         // If we're in a specific folder with a specific account, only fetch from that account
-        allFiles = await fetchFilesFromService(
+        const result = await fetchFilesFromService(
           currentFolderService,
           folderId,
           currentAccountId,
         );
 
-        // Add account info to files
-        const account = serviceAccounts.find(
-          (a) =>
-            a.service === currentFolderService && a.id === currentAccountId,
-        );
-        if (account) {
-          allFiles = allFiles.map((file) => ({
-            ...file,
-            accountName: account.name ?? getServiceName(account.service),
-            accountEmail: account.email,
-          }));
-        }
+        // Check for errors
+        if (result.error) {
+          hasErrors = true;
+          errorMessage = result.error;
+          console.error(
+            `Error fetching ${currentFolderService} files:`,
+            result.error,
+          );
+        } else if (result.needsAuth) {
+          // If authentication is needed, the redirect will happen automatically
+          return;
+        } else {
+          // Add account info to files
+          const account = serviceAccounts.find(
+            (a) =>
+              a.service === currentFolderService && a.id === currentAccountId,
+          );
 
-        const serviceResults: Record<string, DriveItem[]> = {};
-        serviceResults[currentFolderService] = allFiles;
-        setServiceItems(serviceResults);
+          if (account) {
+            allFiles = result.files.map((file) => ({
+              ...file,
+              accountName: account.name ?? getServiceName(account.service),
+              accountEmail: account.email,
+            }));
+          } else {
+            allFiles = result.files;
+          }
+
+          const serviceResults: Record<string, DriveItem[]> = {};
+          serviceResults[currentFolderService] = allFiles;
+          setServiceItems(serviceResults);
+        }
       }
 
       // Sort files (folders first, then alphabetically)
       const sortedFiles = sortItems(allFiles);
       setItems(sortedFiles);
+
+      // Set error if we had any issues
+      if (hasErrors && errorMessage) {
+        setError(errorMessage);
+      }
     } catch (err) {
       console.error("Fetch files error:", err);
       setError(`Failed to fetch files from one or more services`);
@@ -230,12 +317,21 @@ export function useDriveItems(
 
   // Fetch files when dependencies change
   useEffect(() => {
+    // Skip if we're using initial items from props
+    if (initialItems) {
+      return;
+    }
+
     if (isAuthenticated) {
       let isMounted = true;
+      let isLoading = false;
 
       const doFetch = async () => {
-        if (isMounted) {
+        // Prevent multiple simultaneous fetches
+        if (isMounted && !isLoading) {
+          isLoading = true;
           await fetchFiles(currentFolder);
+          isLoading = false;
         }
       };
 
@@ -251,6 +347,7 @@ export function useDriveItems(
     serviceAccounts,
     currentAccountId,
     currentFolderService,
+    initialItems,
   ]);
 
   // Effect for local filtering (non-recursive)
@@ -279,9 +376,15 @@ export function useDriveItems(
   }, [searchResults, isRecursiveSearch]);
 
   // Initialize filteredItems when items change and no search is active
+  // Use a ref to track if we've already set filtered items to avoid unnecessary updates
+  const hasSetFilteredItemsRef = useRef(false);
+
   useEffect(() => {
-    if (!searchQuery) {
+    // Only update filtered items if there's no search query
+    // or if we haven't set them yet
+    if (!searchQuery || !hasSetFilteredItemsRef.current) {
       setFilteredItems(items);
+      hasSetFilteredItemsRef.current = true;
     }
   }, [items, searchQuery]);
 
