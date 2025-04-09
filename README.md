@@ -1,75 +1,191 @@
-# StrataFusion - Unified Cloud Storage
+# <img src="public/stratafusion_icon_256x256.ico" alt="StrataFusion Logo" width="32" height="32" style="vertical-align: text-bottom; border-radius: 6px; margin-right: 8px;"> StrataFusion
 
-A SaaS/Agentic AI online app that integrates multiple online storage services (Google Drive, OneDrive, Dropbox, iCloud, Box, Mega, pCloud) into a unified, mobile-first UI. The platform enables users to browse, search (including full-text search), open file types (in their respective applications), copy, delete and move folders recursively between the different services and platforms. For example, a search for “resume” finds ResumeDecember2024.docx on OneDrive and ResumeDecember2025.docx on Google Drive, allowing users to open them in Office 365, Google Docs, or the appropriate service.
+StrataFusion is a unified cloud storage interface that allows users to access, manage, and search files across multiple cloud storage providers through a single application.
 
-📌 **Follow Next.js documentation** for **Data Fetching, Rendering, and Routing**.
+## Features
 
-# Tech Stack:
+- **Unified Interface**: Access files from Google Drive, OneDrive, Dropbox, and more in one place
+- **Cross-Platform Operations**: Move and copy files between different cloud storage services
+- **Universal Search**: Search across all connected platforms simultaneously
+- **Seamless Integration**: Open files in their native applications
+- **Multi-Account Support**: Connect multiple accounts from the same service (e.g., personal and work Google Drive)
+- **Responsive Design**: Mobile-first approach with responsive desktop experience
 
-## Language
+## Technology Stack
 
-- Typescript
+### Frontend
 
-## React Framework
+- **Language**: TypeScript
+- **Framework**: Next.js (App Router)
+- **UI/Components**:
+  - Tailwind CSS for styling
+  - shadcn/ui for reusable components
+  - Lucide for iconography
+- **State Management**: React Context API
+- **Tables**: Tanstack Table for file/folder listings
+- **Forms**:
+  - React-Hook-Form for form management
+  - Zod for schema validation
 
-- Next.js
+### Backend & Infrastructure
 
-## Package Manager
+- **Authentication**: Clerk for user authentication and role management
+- **Database**: Supabase (PostgreSQL) when required
+- **Hosting**: Vercel or Netlify
+- **API Integration**: RESTful APIs for cloud service providers
 
-- pnpm
+## Getting Started
 
-## Styling/Components
+### Prerequisites
 
-- Tailwindcss
-- shadcn/ui
-- Icons
-  - Lucide
+- Node.js 18.x or higher
+- pnpm (recommended) or npm
 
-## Client State
+### Installation
 
-- ContextAPI
+1. Clone the repository:
 
-## Animation
+   ```bash
+   git clone https://github.com/yourusername/stratafusion.git
+   cd stratafusion
+   ```
 
-- Motion
+2. Install dependencies:
 
-## Testing
+   ```bash
+   pnpm install
+   ```
 
-- Unit
-  - Vitest
-- Component
-  - React testing library
-- E2E
-  - Playwright
+3. Set up environment variables:
 
-## Tables
+   - Copy `.env.example` to `.env.local`
+   - Fill in the required API keys and credentials for the cloud services
 
-- Tanstack Table
+4. Run the development server:
 
-## Forms
+   ```bash
+   pnpm dev
+   ```
 
-- React-Hook-Form
-- Zod for validation
-- Works w/ shadcn
+5. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
 
-## Database
+## Configuration
 
-- Superbase
+### Environment Variables
 
-## Mobile
+Create a `.env.local` file with the following variables:
 
-- React Native
+```
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+CLERK_SECRET_KEY=your_clerk_secret_key
 
-## Component Dev
+# Google Drive
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+GOOGLE_REDIRECT_URI=http://localhost:3000/api/google/callback
 
-- Storybook
-- Storybook Testing
-  - Actions and Interactions
+# OneDrive
+ONEDRIVE_CLIENT_ID=your_onedrive_client_id
+ONEDRIVE_CLIENT_SECRET=your_onedrive_client_secret
+ONEDRIVE_REDIRECT_URI=http://localhost:3000/api/onedrive/callback
 
-## Authentication
+# Dropbox
+DROPBOX_CLIENT_ID=your_dropbox_client_id
+DROPBOX_CLIENT_SECRET=your_dropbox_client_secret
+DROPBOX_REDIRECT_URI=http://localhost:3000/api/dropbox/callback
+```
 
-- Clerk
+## Development
 
-## Hosting
+### Project Structure
 
-- Vercel
+```
+stratafusion/
+├── public/            # Static assets
+├── src/
+│   ├── app/           # Next.js App Router pages
+│   │   ├── api/       # API routes for cloud services
+│   │   └── (routes)   # Application routes
+│   ├── components/    # React components
+│   │   ├── ui/        # UI components (shadcn/ui)
+│   │   └── ...        # Feature-specific components
+│   ├── contexts/      # React contexts
+│   ├── lib/           # Utility functions and libraries
+│   └── styles/        # Global styles
+├── .env.example       # Example environment variables
+├── next.config.js     # Next.js configuration
+└── tailwind.config.js # Tailwind CSS configuration
+```
+
+### Building for Production
+
+```bash
+pnpm build
+```
+
+### Testing
+
+The project uses Vitest for unit and component testing, with React Testing Library for component tests.
+
+#### Running Tests
+
+```bash
+# Run all tests
+pnpm test
+
+# Run tests in watch mode during development
+pnpm test:watch
+
+# Generate test coverage report
+pnpm test:coverage
+
+# Run tests with UI
+pnpm test:ui
+```
+
+#### Test Structure
+
+Tests are co-located with the files they test:
+
+```
+src/
+├── components/
+│   └── Button/
+│       ├── Button.tsx
+│       └── Button.test.tsx
+├── lib/
+│   ├── utils.ts
+│   └── utils.test.ts
+```
+
+#### Writing Tests
+
+- **Unit Tests**: Test utility functions and services in isolation
+- **Component Tests**: Test UI components with React Testing Library
+- **API Tests**: Test API routes with mocked requests and responses
+- **Integration Tests**: Test interactions between components and services
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Branding
+
+The StrataFusion logo (`public/stratafusion_icon_256x256.ico`) represents the unified nature of the platform, bringing together multiple cloud storage services into a single, cohesive experience.
+
+## Acknowledgments
+
+- [Next.js](https://nextjs.org/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [shadcn/ui](https://ui.shadcn.com/)
+- [Clerk](https://clerk.dev/)
+- [Tanstack Table](https://tanstack.com/table/v8)
