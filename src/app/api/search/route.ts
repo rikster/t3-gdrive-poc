@@ -1,20 +1,7 @@
 import { NextResponse } from "next/server";
 import { getActiveServiceAccounts, getStoredTokens } from "~/lib/session";
 
-// Interface for search results
-interface SearchResult {
-  id: string;
-  name: string;
-  type: "file" | "folder";
-  size?: string;
-  modifiedAt: string;
-  parentId: string | null;
-  service: string;
-  accountId: string;
-  accountName?: string;
-  accountEmail?: string;
-  path?: string; // Path to the file/folder for context
-}
+import type { SearchResult } from "~/types/drive";
 
 // Function to search Google Drive recursively
 async function searchGoogleDrive(

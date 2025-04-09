@@ -4,32 +4,8 @@ import { Button } from "~/components/ui/button";
 import { TableRow, TableCell } from "~/components/ui/table";
 import { FileIcon, FolderIcon } from "lucide-react";
 
-interface DriveItem {
-  id: string;
-  name: string;
-  type: "file" | "folder";
-  size?: string;
-  modifiedAt: string;
-  parentId: string | null;
-  service?: string;
-  accountId?: string;
-  accountName?: string;
-  accountEmail?: string;
-}
-
-interface DriveItemRowProps {
-  item: DriveItem;
-  serviceAccounts: Array<{
-    id: string;
-    service: string;
-    name?: string;
-    email?: string;
-  }>;
-  isRecursiveSearch: boolean;
-  clearSearch: () => void;
-  handleFolderClick: (folder: DriveItem) => void;
-  openFile: (fileId: string, service: string, accountId: string) => void;
-}
+import type { DriveItem } from "~/types/drive";
+import type { DriveItemRowProps } from "~/types/ui";
 
 export function DriveItemRow({
   item,
@@ -122,7 +98,7 @@ export function DriveItemRow({
           {item.type === "folder" ? (
             <Button
               variant="ghost"
-              className="flex justify-start items-start p-0 w-full h-auto text-left"
+              className="flex h-auto w-full items-start justify-start p-0 text-left"
               onClick={() => {
                 if (isRecursiveSearch) {
                   // Clear search when navigating to a folder from search results
@@ -131,7 +107,7 @@ export function DriveItemRow({
                 handleFolderClick(item);
               }}
             >
-              <FolderIcon className="flex-shrink-0 mt-1 mr-2 w-5 h-5 text-blue-500" />
+              <FolderIcon className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-blue-500" />
               <span className="whitespace-normal break-words hover:underline">
                 {item.name}
               </span>
@@ -139,18 +115,14 @@ export function DriveItemRow({
           ) : (
             <Button
               variant="ghost"
-              className="flex justify-start items-start p-0 w-full h-auto text-left"
+              className="flex h-auto w-full items-start justify-start p-0 text-left"
               onClick={() => {
                 if (item.service) {
-                  openFile(
-                    item.id,
-                    item.service,
-                    item.accountId as string,
-                  );
+                  openFile(item.id, item.service, item.accountId as string);
                 }
               }}
             >
-              <FileIcon className="flex-shrink-0 mt-1 mr-2 w-5 h-5 text-gray-500" />
+              <FileIcon className="mr-2 mt-1 h-5 w-5 flex-shrink-0 text-gray-500" />
               <span className="whitespace-normal break-words hover:underline">
                 {item.name}
               </span>
@@ -158,13 +130,13 @@ export function DriveItemRow({
           )}
         </div>
       </TableCell>
-      <TableCell className="text-right text-muted-foreground">
+      <TableCell className="text-muted-foreground text-right">
         {item.modifiedAt}
       </TableCell>
-      <TableCell className="text-right text-muted-foreground">
+      <TableCell className="text-muted-foreground text-right">
         {item.size || "-"}
       </TableCell>
-      <TableCell className="text-right text-muted-foreground">
+      <TableCell className="text-muted-foreground text-right">
         {getServiceAccountDisplay(item)}
       </TableCell>
     </TableRow>

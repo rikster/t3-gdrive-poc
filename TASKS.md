@@ -10,28 +10,28 @@
   - [x] Create DriveToolbar component (search, filters, view options)
   - [x] Only allow for one instance of a service account at a time.
     - [x] eg.Only allow for one instance of Google Drive - rhounslow@gmail.com
-  - [x Create DriveEmptyState component (for empty folders/search results)
+  - [x] Create DriveEmptyState component (for empty folders/search results)
   - [x] Create DriveErrorState component (for error handling)
 
 ### Logic Extraction
 
-- [ ] Extract complex logic into custom hooks
-  - [ ] Create useDriveNavigation hook (folder navigation, breadcrumb management)
-  - [ ] Create useDriveItems hook (fetching and filtering items)
+- [x] Extract complex logic into custom hooks
+  - [x] Create useDriveNavigation hook (folder navigation, breadcrumb management)
+  - [x] Create useDriveItems hook (fetching and filtering items)
   - [ ] Create useDriveSearch hook (search functionality)
   - [ ] Create useDriveUpload hook (file upload operations)
 
 ### TypeScript Improvements
 
-- [ ] Implement proper TypeScript interfaces
-  - [ ] Move DriveItem and related interfaces to a separate types file
+- [x] Implement proper TypeScript interfaces
+  - [x] Move DriveItem and related interfaces to a separate types file
   - [ ] Create proper discriminated unions for different item types
-  - [ ] Add comprehensive JSDoc comments for better developer experience
+  - [x] Add comprehensive JSDoc comments for better developer experience
 
 ### State Management
 
-- [ ] Improve state management
-  - [ ] Reduce local component state in favor of context
+- [x] Improve state management
+  - [x] Reduce local component state in favor of context
   - [ ] Consider using a more robust state management solution for complex state
   - [ ] Implement proper loading/error states with skeleton loaders
 
@@ -45,15 +45,17 @@
 
 ### Error Handling
 
-- [ ] Improve error handling
-  - [ ] Create a consistent error handling strategy
+- [x] Improve error handling
+  - [x] Create a consistent error handling strategy
+  - [x] Fix navigation errors with RSC and browser history
   - [ ] Add retry mechanisms for failed API calls
   - [ ] Implement proper error boundaries
 
 ### Testing
 
 - [ ] Add comprehensive testing
-  - [ ] Write unit tests for all extracted hooks
+  - [x] Write unit tests for useDriveNavigation and useDriveItems hooks
+    - [ ] Write unit tests for remaining hooks
   - [ ] Write component tests for UI elements
   - [ ] Write integration tests for the full DriveUI component
   - [ ] Add Storybook stories for all new components
