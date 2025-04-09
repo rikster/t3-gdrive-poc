@@ -117,7 +117,7 @@ export async function getAccountMetadata(
 ): Promise<Partial<ServiceAccount> | null> {
   const cookieStore = await cookies();
   const metadataCookie = cookieStore.get(`${service}_${accountId}_metadata`);
-  
+
   if (!metadataCookie) return null;
 
   try {
@@ -198,4 +198,21 @@ export function generateAccountId(
   const emailHash = email ? email.split("@")[0] : "";
 
   return `${service}_${emailHash || "user"}_${timestamp}_${random}`;
+}
+
+// Check if an account with the given email already exists for a service
+export async function findExistingAccountByEmail(
+  service: ServiceType,
+  email: string,
+): Promise<ServiceAccount | null> {
+  if (!email) return null;
+
+  const accounts = await getActiveServiceAccounts();
+
+  // Find an account with the same service and email
+  const existingAccount = accounts.find(
+    (account) => account.service === service && account.email === email,
+  );
+
+  return existingAccount || null;
 }
