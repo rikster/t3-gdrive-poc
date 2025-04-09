@@ -17,7 +17,7 @@
 
 - [x] Extract complex logic into custom hooks
   - [x] Create useDriveNavigation hook (folder navigation, breadcrumb management)
-  - [ ] Create useDriveItems hook (fetching and filtering items)
+  - [x] Create useDriveItems hook (fetching and filtering items)
   - [ ] Create useDriveSearch hook (search functionality)
   - [ ] Create useDriveUpload hook (file upload operations)
 
@@ -47,13 +47,15 @@
 
 - [x] Improve error handling
   - [x] Create a consistent error handling strategy
+  - [x] Fix navigation errors with RSC and browser history
   - [ ] Add retry mechanisms for failed API calls
   - [ ] Implement proper error boundaries
 
 ### Testing
 
 - [ ] Add comprehensive testing
-  - [ ] Write unit tests for all extracted hooks
+  - [x] Write unit tests for useDriveNavigation and useDriveItems hooks
+    - [ ] Write unit tests for remaining hooks
   - [ ] Write component tests for UI elements
   - [ ] Write integration tests for the full DriveUI component
   - [ ] Add Storybook stories for all new components

@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useDrive } from "~/contexts/DriveContext";
 import type { DriveItem, BreadcrumbItem } from "~/types/drive";
 
 export function useDriveNavigation() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated } = useDrive();
 
@@ -20,15 +19,27 @@ export function useDriveNavigation() {
 
   // Update URL with current folder state
   const updateURL = (folder: DriveItem) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("folderId", folder.id);
-    if (folder.service) params.set("service", folder.service);
-    if (folder.accountId) params.set("accountId", folder.accountId);
-    router.push(`/?${params.toString()}`);
+    try {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("folderId", folder.id);
+      if (folder.service) params.set("service", folder.service);
+      if (folder.accountId) params.set("accountId", folder.accountId);
+
+      // Use history API directly to avoid RSC navigation issues
+      const newUrl = `/?${params.toString()}`;
+      window.history.pushState({}, "", newUrl);
+    } catch (error) {
+      console.error("Failed to update URL:", error);
+    }
   };
 
   // Handle folder navigation
   const handleFolderClick = (folder: DriveItem) => {
+    // Skip if we're already on this folder
+    if (folder.id === currentFolder) {
+      return;
+    }
+
     if (folder.service) {
       setCurrentFolderService(folder.service);
       setCurrentAccountId(folder.accountId || null);
@@ -72,6 +83,11 @@ export function useDriveNavigation() {
 
   // Navigate to root
   const navigateToRoot = () => {
+    // Skip if we're already at root to prevent infinite loops
+    if (currentFolder === "root") {
+      return;
+    }
+
     const rootFolder: DriveItem = {
       id: "root",
       name: "Home",
@@ -82,13 +98,17 @@ export function useDriveNavigation() {
     handleFolderClick(rootFolder);
   };
 
-  // Handle URL-based navigation
+  // Handle URL-based navigation - only run on initial mount and when searchParams changes
+  const isInitialMountRef = useRef(true);
+
   useEffect(() => {
     const folderId = searchParams.get("folderId");
     const service = searchParams.get("service");
     const accountId = searchParams.get("accountId");
 
-    if (folderId && folderId !== currentFolder) {
+    if (folderId && (isInitialMountRef.current || folderId !== currentFolder)) {
+      // After first run, set isInitialMount to false
+      isInitialMountRef.current = false;
       const folderItem: DriveItem = {
         id: folderId,
         name: "", // This will be updated when folder contents are fetched
@@ -99,12 +119,15 @@ export function useDriveNavigation() {
         accountId: accountId || undefined,
       };
 
+      // Update state without calling updateURL to avoid infinite loop
       if (folderItem.service) {
         setCurrentFolderService(folderItem.service);
         setCurrentAccountId(folderItem.accountId || null);
       }
       setCurrentFolder(folderItem.id);
     }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // Reset navigation state on logout
@@ -116,6 +139,36 @@ export function useDriveNavigation() {
       setBreadcrumbPath([]);
     }
   }, [isAuthenticated]);
+
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      // Get the current URL parameters
+      const url = new URL(window.location.href);
+      const folderId = url.searchParams.get("folderId") || "root";
+      const service = url.searchParams.get("service");
+      const accountId = url.searchParams.get("accountId");
+
+      // Update state without calling updateURL
+      if (folderId !== currentFolder) {
+        if (service) {
+          setCurrentFolderService(service);
+          setCurrentAccountId(accountId || null);
+        }
+        setCurrentFolder(folderId);
+      }
+    };
+
+    // Add event listener
+    window.addEventListener("popstate", handlePopState);
+
+    // Clean up
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return {
     currentFolder,
