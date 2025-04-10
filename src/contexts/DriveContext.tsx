@@ -33,14 +33,10 @@ export interface DriveContextType {
   setSearchQuery: (query: string) => void;
   isSearching: boolean;
   searchResults: DriveItem[];
-  performSearch: (query: string) => Promise<void>;
+  performSearch: (query: string) => void;
   clearSearch: () => void;
   isRecursiveSearch: boolean;
-  openFile: (
-    fileId: string,
-    service: string,
-    accountId?: string,
-  ) => Promise<void>;
+  openFile: (fileId: string, service: string, accountId?: string) => void;
 }
 
 export const DriveContext = createContext<DriveContextType>({
@@ -59,10 +55,10 @@ export const DriveContext = createContext<DriveContextType>({
   setSearchQuery: () => undefined,
   isSearching: false,
   searchResults: [],
-  performSearch: async () => undefined,
+  performSearch: () => undefined,
   clearSearch: () => undefined,
   isRecursiveSearch: false,
-  openFile: async () => undefined,
+  openFile: () => undefined,
 });
 
 export function DriveProvider({ children }: { children: ReactNode }) {
@@ -466,10 +462,18 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         value={{
           isAuthenticated,
           isClerkAuthenticated,
-          authenticateService,
-          addNewAccount,
-          disconnectService,
-          disconnectAccount,
+          authenticateService: (serviceId: string) => {
+            void authenticateService(serviceId);
+          },
+          addNewAccount: (serviceId: string) => {
+            void addNewAccount(serviceId);
+          },
+          disconnectService: (serviceId: string) => {
+            void disconnectService(serviceId);
+          },
+          disconnectAccount: (serviceId: string, accountId: string) => {
+            void disconnectAccount(serviceId, accountId);
+          },
           logout,
           currentService,
           activeServices,
@@ -479,10 +483,14 @@ export function DriveProvider({ children }: { children: ReactNode }) {
           setSearchQuery,
           isSearching,
           searchResults,
-          performSearch,
+          performSearch: (query: string) => {
+            void performSearch(query);
+          },
           clearSearch,
           isRecursiveSearch,
-          openFile,
+          openFile: (fileId: string, service: string, accountId?: string) => {
+            void openFile(fileId, service, accountId);
+          },
         }}
       >
         {children}

@@ -9,8 +9,39 @@ import {
 } from "~/lib/session";
 import { Client } from "@microsoft/microsoft-graph-client";
 
+// Define interfaces for type safety
+interface OneDriveTokens {
+  access_token: string;
+  refresh_token: string;
+  scope: string;
+  token_type: string;
+  expires_in: number;
+}
+
+interface OneDriveErrorResponse {
+  error: string;
+  error_description: string;
+}
+
+interface OneDriveUserInfo {
+  mail?: string;
+  userPrincipalName?: string;
+  displayName?: string;
+  email?: string; // Computed field
+}
+
+interface OneDriveItem {
+  id: string;
+  name: string;
+  folder?: Record<string, unknown>;
+  size?: number;
+  lastModifiedDateTime?: string;
+  webUrl?: string;
+}
+
 // Microsoft Graph endpoint and auth URLs
-const MICROSOFT_ENDPOINT = "https://graph.microsoft.com/v1.0";
+// Commented out as it's currently unused
+// const MICROSOFT_ENDPOINT = "https://graph.microsoft.com/v1.0";
 const AUTH_ENDPOINT =
   "https://login.microsoftonline.com/common/oauth2/v2.0/authorize";
 const TOKEN_ENDPOINT =
@@ -22,15 +53,18 @@ const SCOPES = ["files.read", "offline_access", "User.Read"].join(" ");
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get("code");
-  const accountId = searchParams.get("accountId") || "default";
+  const accountId = searchParams.get("accountId") ?? "default";
   const storedTokens = await getStoredTokens("onedrive", accountId);
-  const folderId = searchParams.get("folderId") || "root";
+  const folderId = searchParams.get("folderId") ?? "root";
   const addAccount = searchParams.get("addAccount") === "true";
 
   // If we have stored tokens and not adding a new account, use them
   if (storedTokens && !code && !addAccount) {
     try {
-      return await listFiles(storedTokens, folderId);
+      return await listFiles(
+        storedTokens as { access_token: string },
+        folderId,
+      );
     } catch (error) {
       console.error("Error with stored tokens:", error);
       // If there's an error with stored tokens, clear them and proceed with new auth
@@ -63,7 +97,10 @@ export async function GET(request: NextRequest) {
 
     if (state) {
       try {
-        parsedState = JSON.parse(state);
+        parsedState = JSON.parse(state) as {
+          accountId: string;
+          addAccount: boolean;
+        };
       } catch (e) {
         console.error("Error parsing state:", e);
       }
@@ -84,28 +121,32 @@ export async function GET(request: NextRequest) {
       }).toString(),
     });
 
-    const tokenData = await tokenResponse.json();
+    const tokenData = (await tokenResponse.json()) as
+      | OneDriveTokens
+      | OneDriveErrorResponse;
 
     if (!tokenResponse.ok) {
+      const errorData = tokenData as OneDriveErrorResponse;
       throw new Error(
-        `Failed to get token: ${tokenData.error_description || "Unknown error"}`,
+        `Failed to get token: ${errorData.error_description ?? "Unknown error"}`,
       );
     }
 
     // Format token data to match our TokenData interface
+    const tokenInfo = tokenData as OneDriveTokens;
     const tokens = {
-      access_token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token,
-      scope: tokenData.scope,
-      token_type: tokenData.token_type,
-      expiry_date: Date.now() + tokenData.expires_in * 1000,
+      access_token: tokenInfo.access_token,
+      refresh_token: tokenInfo.refresh_token,
+      scope: tokenInfo.scope,
+      token_type: tokenInfo.token_type,
+      expiry_date: Date.now() + tokenInfo.expires_in * 1000,
     };
 
     // Get user info for this account
     const userInfo = await getUserInfo(tokens.access_token);
 
     // If this is a new account and we have an email, check if it already exists
-    if (parsedState.addAccount && userInfo && userInfo.email) {
+    if (parsedState.addAccount && userInfo?.email) {
       const existingAccount = await findExistingAccountByEmail(
         "onedrive",
         userInfo.email,
@@ -113,7 +154,8 @@ export async function GET(request: NextRequest) {
 
       if (existingAccount) {
         // Account with this email already exists, redirect to home with error message
-        const errorUrl = new URL("/", request.url);
+        // Use NEXT_PUBLIC_SITE_URL for consistent URLs across environments
+        const errorUrl = new URL("/", env.NEXT_PUBLIC_SITE_URL);
 
         // Add a timestamp to prevent browser caching issues
         const timestamp = Date.now();
@@ -148,7 +190,7 @@ export async function GET(request: NextRequest) {
         {
           id: finalAccountId,
           service: "onedrive",
-          name: userInfo.name || "OneDrive Account",
+          name: userInfo.name ?? "OneDrive Account",
           email: userInfo.email,
         },
         "onedrive",
@@ -157,7 +199,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Redirect to main page after successful authentication
-    return Response.redirect(new URL("/", request.url));
+    // Use NEXT_PUBLIC_SITE_URL for consistent URLs across environments
+    return Response.redirect(`${env.NEXT_PUBLIC_SITE_URL}/`);
   } catch (error) {
     console.error("Error:", error);
     return Response.json(
@@ -167,7 +210,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function listFiles(tokens: any, folderId: string) {
+async function listFiles(tokens: { access_token: string }, folderId: string) {
   try {
     const client = Client.init({
       authProvider: (done) => {
@@ -184,17 +227,22 @@ async function listFiles(tokens: any, folderId: string) {
     }
 
     // The Microsoft Graph API requires a different orderby format than the one we were using
-    const response = await client
+    const response = (await client
       .api(endpoint)
       .select("id,name,folder,file,size,lastModifiedDateTime")
       .orderby("name asc") // Using a single value primitive type
-      .get();
+      .get()) as { value: OneDriveItem[] };
+
+    interface DriveResponse {
+      value: OneDriveItem[];
+    }
 
     // Ensure response.value exists, if not, return an empty array
-    const items = response.value || [];
+    const typedResponse = response as DriveResponse;
+    const items = typedResponse.value ?? [];
 
     // Sort folders first, then files (since we can't use folder in orderby)
-    const sortedItems = items.sort((a: any, b: any) => {
+    const sortedItems = items.sort((a: OneDriveItem, b: OneDriveItem) => {
       // If a is a folder and b is not, a comes first
       if (a.folder && !b.folder) return -1;
       // If b is a folder and a is not, b comes first
@@ -203,12 +251,14 @@ async function listFiles(tokens: any, folderId: string) {
       return a.name.localeCompare(b.name);
     });
 
-    const files = sortedItems.map((item: any) => ({
+    const files = sortedItems.map((item: OneDriveItem) => ({
       id: item.id,
       name: item.name,
       type: item.folder ? "folder" : "file",
       size: item.size ? `${Math.round(item.size / 1024)} KB` : undefined,
-      modifiedAt: new Date(item.lastModifiedDateTime).toLocaleDateString(),
+      modifiedAt: item.lastModifiedDateTime
+        ? new Date(item.lastModifiedDateTime).toLocaleDateString()
+        : "",
       parentId: folderId === "root" ? null : folderId,
     }));
 
@@ -232,13 +282,13 @@ async function getUserInfo(accessToken: string) {
       },
     });
 
-    const userInfo = await client
+    const userInfo = (await client
       .api("/me")
       .select("displayName,mail,userPrincipalName")
-      .get();
+      .get()) as OneDriveUserInfo;
 
     return {
-      email: userInfo.mail || userInfo.userPrincipalName,
+      email: userInfo.mail ?? userInfo.userPrincipalName,
       name: userInfo.displayName,
     };
   } catch (error) {

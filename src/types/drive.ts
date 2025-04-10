@@ -29,7 +29,8 @@ export interface DriveItem {
 }
 
 // Re-export the new item types for easier imports
-export { DriveItemUnion, FileItem, FolderItem, isFileItem, isFolderItem };
+export type { DriveItemUnion, FileItem, FolderItem };
+export { isFileItem, isFolderItem };
 
 /**
  * Represents an item in the breadcrumb navigation path
