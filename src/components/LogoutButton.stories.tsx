@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { LogoutButton } from './LogoutButton';
-import { DriveContext, type DriveContextType } from '../contexts/DriveContext';
-import React from 'react';
-import { expect } from '@storybook/test';
 import { userEvent, within } from '@storybook/testing-library';
+import React from 'react';
+
+import { DriveContext, type DriveContextType } from '../contexts/DriveContext';
+
+import { LogoutButton } from './LogoutButton';
 
 // Mock the DriveContext values
 const createMockDriveContextValue = (isAuthenticated: boolean): DriveContextType => ({
@@ -13,7 +14,7 @@ const createMockDriveContextValue = (isAuthenticated: boolean): DriveContextType
   addNewAccount: () => undefined,
   disconnectService: () => undefined,
   disconnectAccount: () => undefined,
-  logout: () => { console.log('Logout called'); }, // Mock logout function
+  logout: () => { /* Logout function called */ }, // Mock logout function
   currentService: 'googledrive',
   activeServices: ['googledrive', 'onedrive'],
   serviceAccounts: [], // Mock empty service accounts array
@@ -22,10 +23,12 @@ const createMockDriveContextValue = (isAuthenticated: boolean): DriveContextType
   setSearchQuery: () => undefined,
   isSearching: false,
   searchResults: [],
-  performSearch: async () => undefined,
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
+  performSearch: async () => { /* no-op */ },
   clearSearch: () => undefined,
   isRecursiveSearch: false,
-  openFile: async () => undefined
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
+  openFile: async () => { /* no-op */ }
 });
 
 // Create a decorator with mocked DriveContext
@@ -79,14 +82,14 @@ export const Default: Story = {
       <LogoutButton />
     </div>
   ),
-  play: async ({ canvasElement, step }) => {
+  play: ({ canvasElement, step }) => {
     const canvas = within(canvasElement);
     
     // Find the logout button
     const logoutButton = canvas.getByRole('button');
     
     // Click the button
-    await step('Click the logout button', async () => {
+    step('Click the logout button', async () => {
       await userEvent.click(logoutButton);
       // In a real scenario, this would trigger the logout function
       // We can't actually verify the action in this test environment
@@ -108,14 +111,14 @@ export const Destructive: Story = {
       <LogoutButton variant="destructive" />
     </div>
   ),
-  play: async ({ canvasElement, step }) => {
+  play: ({ canvasElement, step }) => {
     const canvas = within(canvasElement);
     
     // Find the logout button
     const logoutButton = canvas.getByRole('button');
     
     // Click the button
-    await step('Click the logout button', async () => {
+    step('Click the logout button', async () => {
       await userEvent.click(logoutButton);
       // In a real scenario, this would trigger the logout function
       // We can't actually verify the action in this test environment
@@ -137,14 +140,14 @@ export const DefaultSize: Story = {
       <LogoutButton size="default" />
     </div>
   ),
-  play: async ({ canvasElement, step }) => {
+  play: ({ canvasElement, step }) => {
     const canvas = within(canvasElement);
     
     // Find the logout button
     const logoutButton = canvas.getByRole('button');
     
     // Click the button
-    await step('Click the logout button', async () => {
+    step('Click the logout button', async () => {
       await userEvent.click(logoutButton);
       // In a real scenario, this would trigger the logout function
       // We can't actually verify the action in this test environment
@@ -166,14 +169,14 @@ export const AlwaysShowText: Story = {
       <LogoutButton showText={true} />
     </div>
   ),
-  play: async ({ canvasElement, step }) => {
+  play: ({ canvasElement, step }) => {
     const canvas = within(canvasElement);
     
     // Find the logout button
     const logoutButton = canvas.getByRole('button');
     
     // Click the button
-    await step('Click the logout button', async () => {
+    step('Click the logout button', async () => {
       await userEvent.click(logoutButton);
       // In a real scenario, this would trigger the logout function
       // We can't actually verify the action in this test environment
