@@ -42,7 +42,7 @@ export function useDriveNavigation() {
 
     if (folder.service) {
       setCurrentFolderService(folder.service);
-      setCurrentAccountId(folder.accountId || null);
+      setCurrentAccountId(folder.accountId ?? null);
     }
 
     setCurrentFolder(folder.id);
@@ -88,14 +88,6 @@ export function useDriveNavigation() {
       return;
     }
 
-    const rootFolder: DriveItem = {
-      id: "root",
-      name: "Home",
-      type: "folder",
-      modifiedAt: "",
-      parentId: null,
-    };
-
     // Update state directly without triggering additional effects
     setCurrentFolder("root");
     setCurrentFolderService(null);
@@ -133,14 +125,14 @@ export function useDriveNavigation() {
         type: "folder",
         modifiedAt: "",
         parentId: null,
-        service: service || undefined,
-        accountId: accountId || undefined,
+        service: service ?? undefined,
+        accountId: accountId ?? undefined,
       };
 
       // Update state without calling updateURL to avoid infinite loop
       if (folderItem.service) {
         setCurrentFolderService(folderItem.service);
-        setCurrentAccountId(folderItem.accountId || null);
+        setCurrentAccountId(folderItem.accountId ?? null);
       }
       setCurrentFolder(folderItem.id);
     }
@@ -182,7 +174,7 @@ export function useDriveNavigation() {
     const handlePopState = () => {
       // Get the current URL parameters
       const url = new URL(window.location.href);
-      const folderId = url.searchParams.get("folderId") || "root";
+      const folderId = url.searchParams.get("folderId") ?? "root";
       const service = url.searchParams.get("service");
       const accountId = url.searchParams.get("accountId");
 
@@ -190,7 +182,7 @@ export function useDriveNavigation() {
       if (folderId !== currentFolder) {
         if (service) {
           setCurrentFolderService(service);
-          setCurrentAccountId(accountId || null);
+          setCurrentAccountId(accountId ?? null);
         }
         setCurrentFolder(folderId);
       }

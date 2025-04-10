@@ -61,7 +61,7 @@ export async function getActiveServiceAccounts(): Promise<ServiceAccount[]> {
             unknown
           >;
         }
-      } catch (error) {
+      } catch {
         // If metadata parsing fails, continue with basic info
       }
 
@@ -123,7 +123,8 @@ export async function getActiveServices(): Promise<ServiceType[]> {
 // Get the first active service account for each service type (for backward compatibility)
 export async function getActiveService(): Promise<ServiceType | null> {
   const services = await getActiveServices();
-  return services.length > 0 ? services[0] : null;
+  const firstService = services[0];
+  return firstService ?? null;
 }
 
 // Clear tokens for a specific account or all accounts of a service
@@ -184,7 +185,7 @@ export function isTokenExpired(token: TokenData): boolean {
 
 // Check if a token is valid (has required fields and is not expired)
 export function isTokenValid(token: TokenData | null): boolean {
-  if (!token || !token.access_token) return false;
+  if (!token?.access_token) return false;
 
   // If there's no expiry date, assume it's valid
   if (!token.expiry_date) return true;
@@ -200,9 +201,9 @@ export function generateAccountId(
 ): string {
   const timestamp = Date.now();
   const random = Math.floor(Math.random() * 10000);
-  const emailHash = email ? email.split("@")[0] : "";
+  const emailHash = email?.split("@")[0] ?? "";
 
-  return `${service}_${emailHash || "user"}_${timestamp}_${random}`;
+  return `${service}_${emailHash ?? "user"}_${timestamp}_${random}`;
 }
 
 // Check if an account with the given email already exists for a service
@@ -219,5 +220,5 @@ export async function findExistingAccountByEmail(
     (account) => account.service === service && account.email === email,
   );
 
-  return existingAccount || null;
+  return existingAccount ?? null;
 }

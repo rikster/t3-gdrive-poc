@@ -266,7 +266,7 @@ describe("useDriveNavigation", () => {
               ...hook,
               currentFolder: folder.id,
               currentFolderService: folder.service,
-              currentAccountId: folder.accountId || null,
+              currentAccountId: folder.accountId ?? null,
               breadcrumbPath: [
                 {
                   id: folder.id,
