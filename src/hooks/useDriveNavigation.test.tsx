@@ -40,7 +40,7 @@ Object.defineProperty(window, "location", {
   writable: true,
   value: {
     ...originalLocation,
-    href: "http://localhost:3000/",
+    href: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000/",
   },
 });
 
