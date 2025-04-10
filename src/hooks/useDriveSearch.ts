@@ -63,14 +63,14 @@ export function useDriveSearch(): UseDriveSearchResult {
       );
       
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Search error:", errorData.error || response.statusText);
-        throw new Error(errorData.error || "Failed to search files");
+        const errorData = await response.json() as { error?: string };
+        console.error("Search error:", errorData.error ?? response.statusText);
+        throw new Error(errorData.error ?? "Failed to search files");
       }
       
-      const data = await response.json();
-      setSearchResults(data.files || []);
-    } catch (error) {
+      const data = await response.json() as { files?: SearchResult[] };
+      setSearchResults(data.files ?? []);
+    } catch (error: unknown) {
       console.error("Search error:", error);
       setSearchResults([]);
     } finally {

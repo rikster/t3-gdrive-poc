@@ -1,5 +1,9 @@
 # StrataFusion Tasks
 
+## Development Environment Setup
+
+- [x] Change default VS Code terminal to Git Bash
+
 ## DriveUI Component Architectural Improvements
 
 ### Component Structure
@@ -56,7 +60,7 @@
 - [ ] Add comprehensive testing
   - [x] Write unit tests for useDriveNavigation and useDriveItems hooks
     - [x] Write unit tests for useDriveSearch hook
-    - [ ] Write unit tests for remaining hooks
+    - [x] Write unit tests for remaining hooks
   - [ ] Write component tests for UI elements
   - [ ] Write integration tests for the full DriveUI component
   - [ ] Add Storybook stories for all new components

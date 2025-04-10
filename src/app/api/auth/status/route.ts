@@ -1,11 +1,10 @@
-import { type NextRequest } from "next/server";
 import {
   getActiveServiceAccounts,
   getActiveServices,
   getAccountMetadata,
 } from "~/lib/session";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   // Get all service accounts
   const serviceAccounts = await getActiveServiceAccounts();
 
@@ -15,7 +14,7 @@ export async function GET(request: NextRequest) {
     serviceAccounts.map((acc) => ({
       id: acc.id,
       service: acc.service,
-      email: acc.email || "missing_email",
+      email: acc.email ?? "missing_email",
     })),
   );
 
@@ -24,7 +23,7 @@ export async function GET(request: NextRequest) {
     serviceAccounts.map(async (account) => {
       if (
         account.service === "dropbox" &&
-        (!account.email || account.email === "")
+        (!account.email || account.email.trim() === "")
       ) {
         // Try to get more complete metadata
         console.log(
@@ -50,7 +49,7 @@ export async function GET(request: NextRequest) {
   const activeServices = await getActiveServices();
 
   // For backward compatibility
-  const primaryService = activeServices.length > 0 ? activeServices[0] : null;
+  const primaryService = activeServices[0] ?? null;
 
   return Response.json({
     isAuthenticated: serviceAccounts.length > 0,
