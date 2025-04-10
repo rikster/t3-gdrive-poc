@@ -73,6 +73,13 @@ StrataFusion is a unified cloud storage interface that allows users to access, m
 
 ### Environment Variables
 
+The application uses different environment files for different environments:
+
+- `.env.local`: Local development variables (not committed to git)
+- `.env.development`: Development environment variables
+- `.env.staging`: Staging environment variables
+- `.env.production`: Production environment variables
+
 Create a `.env.local` file with the following variables:
 
 ```
@@ -94,7 +101,20 @@ ONEDRIVE_REDIRECT_URI=http://localhost:3000/api/onedrive/callback
 DROPBOX_CLIENT_ID=your_dropbox_client_id
 DROPBOX_CLIENT_SECRET=your_dropbox_client_secret
 DROPBOX_REDIRECT_URI=http://localhost:3000/api/dropbox/callback
+
+# Site URL
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
+
+### Environment-Specific Configuration
+
+For different environments, the application uses different site URLs:
+
+- **Development**: `http://localhost:3000` (defined in `.env.development`)
+- **Staging**: `https://staging.stratafusion.vercel.app` (defined in `.env.staging`)
+- **Production**: `https://stratafusion.vercel.app` (defined in `.env.production`)
+
+When deploying to different environments, make sure to update the `NEXT_PUBLIC_SITE_URL` in the corresponding environment file.
 
 ## Development
 
