@@ -1,8 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { DriveUI } from './DriveUI';
-import { mockDriveData } from '../lib/mock-data';
-import { DriveContext, DriveContextType } from '../contexts/DriveContext';
 import React from 'react';
+
+import type { DriveContextType } from '../contexts/DriveContext';
+import { DriveContext } from '../contexts/DriveContext';
+import { mockDriveData } from '../lib/mock-data';
+
+import { DriveUI } from './DriveUI';
 
 // Mock the DriveContext values
 const mockDriveContextValue: DriveContextType = {
@@ -21,10 +24,10 @@ const mockDriveContextValue: DriveContextType = {
   setSearchQuery: () => {}, // Mock function
   isSearching: false,
   searchResults: [],
-  performSearch: async () => {}, // Mock function
+  performSearch: () => {}, // Mock function - using void return instead of Promise
   clearSearch: () => {}, // Mock function
   isRecursiveSearch: false,
-  openFile: async () => {} // Mock function
+  openFile: () => {} // Mock function - using void return instead of Promise
 };
 
 // Create a decorator with mocked DriveContext
