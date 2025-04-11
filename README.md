@@ -146,6 +146,22 @@ pnpm build
 
 ## Testing
 
+### Continuous Integration
+
+This project uses GitHub Actions for continuous integration. The CI pipeline runs automatically on:
+- Every push to the `main` or `dev` branches
+- Every pull request targeting the `main` or `dev` branches
+
+The CI pipeline includes:
+- Running all tests
+- Type checking
+- Linting
+- Coverage reporting
+
+You can view the CI status in the GitHub Actions tab of the repository.
+
+### Test Commands
+
 The project uses Vitest for testing. Here are the available test commands:
 
 ```bash

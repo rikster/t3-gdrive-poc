@@ -8,7 +8,6 @@ import type { DriveItem } from "~/types/drive";
 import type { ServiceAccount, ServiceType } from "~/types/services";
 import type { DriveItemRowProps } from "~/types/ui";
 
-
 export function DriveItemRow({
   item,
   serviceAccounts,
@@ -38,14 +37,14 @@ export function DriveItemRow({
   // Function to get combined service and account display for table
   const getServiceAccountDisplay = (item: DriveItem) => {
     const serviceName = getServiceName(item.service);
-    const service = item.service;
+    const service = item.service as ServiceType | undefined;
 
     if (!service || !(service in serviceAccounts)) {
       return serviceName;
     }
 
     // Get account from serviceAccounts
-    const accounts = (serviceAccounts[service as ServiceType] ?? []) as ServiceAccount[];
+    const accounts = (serviceAccounts[service] ?? []) as ServiceAccount[];
     const account = accounts.find((a) => a.id === item.accountId);
 
     // If we found the matching account, use its email
@@ -60,10 +59,8 @@ export function DriveItemRow({
     }
 
     // If no email found at all
-    return `${serviceName} - ${item.accountId ?? 'Unknown'}`;
+    return `${serviceName} - ${item.accountId ?? "Unknown"}`;
   };
-
-
 
   return (
     <TableRow
@@ -95,7 +92,11 @@ export function DriveItemRow({
               className="flex h-auto w-full items-start justify-start p-0 text-left"
               onClick={() => {
                 if (item.service) {
-                  openFile(item.id, item.service, item.accountId as string);
+                  openFile(
+                    item.id,
+                    item.service as ServiceType,
+                    item.accountId as string,
+                  );
                 }
               }}
             >

@@ -6,6 +6,7 @@ import { useDrive } from "~/contexts/DriveContext";
 import { useDriveItems } from "~/hooks/useDriveItems";
 import { useDriveNavigation } from "~/hooks/useDriveNavigation";
 import type { DriveItem } from "~/types/drive";
+import type { ServiceType } from "~/types/services";
 import type { DriveUIProps } from "~/types/ui";
 
 import { DriveBreadcrumb } from "./DriveBreadcrumb";
@@ -58,15 +59,15 @@ export function DriveUI({
     alert("Upload functionality would go here!");
   };
 
-  const handleServiceSelect = (serviceId: string) => {
+  const handleServiceSelect = (serviceId: ServiceType) => {
     authenticateService(serviceId);
   };
 
-  const handleAddAccount = (serviceId: string) => {
+  const handleAddAccount = (serviceId: ServiceType) => {
     addNewAccount(serviceId);
   };
 
-  const handleDisconnectService = (serviceId: string) => {
+  const handleDisconnectService = (serviceId: ServiceType) => {
     // If we're currently viewing a folder from this service, go back to root
     if (currentFolderService === serviceId) {
       navigateToRoot();
@@ -81,7 +82,7 @@ export function DriveUI({
       navigateToRoot();
     }
 
-    disconnectAccount(serviceId, accountId);
+    void disconnectAccount(serviceId as ServiceType, accountId);
   };
 
   // Handle search input changes
@@ -172,7 +173,7 @@ export function DriveUI({
                 type: "folder",
                 modifiedAt: "",
                 parentId: null,
-                service: item.service,
+                service: item.service as ServiceType | undefined,
                 accountId: item.accountId,
               };
               handleFolderClick(folderItem);

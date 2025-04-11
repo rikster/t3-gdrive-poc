@@ -10,7 +10,7 @@ import {
 } from "~/components/ui/table";
 
 import type { DriveItem } from "~/types/drive";
-import type { ServiceAccount } from "~/types/services";
+import type { ServiceAccount, ServiceType } from "~/types/services";
 
 import { DriveErrorState } from "./DriveErrorState";
 import { DriveItemRow } from "./DriveItemRow";
@@ -25,7 +25,7 @@ interface DriveTableProps {
   isRecursiveSearch: boolean;
   clearSearch: () => void;
   handleFolderClick: (item: DriveItem) => void;
-  openFile: (fileId: string, service: string, accountId?: string) => void;
+  openFile: (fileId: string, service: ServiceType, accountId?: string) => void;
   searchQuery?: string;
 }
 
@@ -91,7 +91,9 @@ export function DriveTable({
                   isRecursiveSearch={isRecursiveSearch}
                   clearSearch={clearSearch}
                   handleFolderClick={handleFolderClick}
-                  openFile={(fileId, service, accountId) => openFile(fileId, service, accountId)}
+                  openFile={(fileId, service, accountId) =>
+                    openFile(fileId, service, accountId)
+                  }
                 />
               ))
             )}

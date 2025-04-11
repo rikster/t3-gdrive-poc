@@ -4,7 +4,7 @@ import { useDriveItems } from "./useDriveItems";
 import { DriveContext } from "~/contexts/DriveContext";
 import { DriveNavigationContext } from "~/contexts/DriveNavigationContext";
 import type { DriveItem } from "~/types/drive";
-import type { ServiceAccount } from "~/types/services";
+import type { ServiceAccount, ServiceType } from "~/types/services";
 
 // Mock next/navigation
 vi.mock("next/navigation", () => {
@@ -84,7 +84,7 @@ const mockDriveContext = {
   disconnectAccount: vi.fn(),
   logout: vi.fn(),
   currentService: null,
-  activeServices: ["google", "onedrive"],
+  activeServices: ["google", "onedrive"] as ServiceType[],
   isAuthenticating: false,
   setSearchQuery: vi.fn(),
   isSearching: false,

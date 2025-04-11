@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useMemo } from "react";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,23 +11,17 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-
-interface ServiceAccount {
-  id: string;
-  service: string;
-  name?: string;
-  email?: string;
-}
+import type { ServiceAccount, ServiceType } from "~/types/services";
 
 interface ServiceSelectorProps {
-  activeServices: string[];
-  serviceAccounts: Record<string, ServiceAccount[]>;
-  onDisconnectService: (serviceId: string) => void;
-  onDisconnectAccount: (serviceId: string, accountId: string) => void;
+  activeServices: ServiceType[];
+  serviceAccounts: Record<ServiceType, ServiceAccount[]>;
+  onDisconnectService: (serviceId: ServiceType) => void;
+  onDisconnectAccount: (serviceId: ServiceType, accountId: string) => void;
 }
 
 // Helper function to get service display name
-const getServiceName = (service: string): string => {
+const getServiceName = (service: ServiceType): string => {
   switch (service) {
     case "google":
       return "Google Drive";
@@ -34,8 +29,6 @@ const getServiceName = (service: string): string => {
       return "OneDrive";
     case "dropbox":
       return "Dropbox";
-    case "box":
-      return "Box";
     default:
       return service;
   }
@@ -57,12 +50,12 @@ export function ServiceSelector({
 
   // The accounts are already grouped by service, just need to ensure all active services have an entry
   const accountsByService = useMemo(() => {
-    return activeServices.reduce<Record<string, ServiceAccount[]>>(
+    return activeServices.reduce<Record<ServiceType, ServiceAccount[]>>(
       (acc, service) => {
         acc[service] = serviceAccounts[service] ?? [];
         return acc;
       },
-      {},
+      {} as Record<ServiceType, ServiceAccount[]>,
     );
   }, [activeServices, serviceAccounts]);
 
@@ -76,7 +69,7 @@ export function ServiceSelector({
   }, []);
 
   const handleDisconnectService = useCallback(
-    (service: string) => {
+    (service: ServiceType) => {
       if (
         window.confirm(
           `Are you sure you want to disconnect ${getServiceName(service)}?`,
@@ -90,7 +83,7 @@ export function ServiceSelector({
   );
 
   const handleDisconnectAccount = useCallback(
-    (service: string, accountId: string, accountName: string) => {
+    (service: ServiceType, accountId: string, accountName: string) => {
       if (
         window.confirm(`Are you sure you want to disconnect ${accountName}?`)
       ) {

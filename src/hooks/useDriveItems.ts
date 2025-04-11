@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 
 import type { DriveItem } from "~/types/drive";
+import type { ServiceType } from "~/types/services";
 
 import { useDrive } from "~/contexts/DriveContext";
 import { useDriveNavigation } from "./useDriveNavigation";
@@ -12,7 +13,7 @@ interface UseDriveItemsResult {
   filteredItems: DriveItem[];
   isLoading: boolean;
   error: string | null;
-  serviceItems: Record<string, DriveItem[]>;
+  serviceItems: Record<ServiceType, DriveItem[]>;
   fetchFiles: (folderId: string) => Promise<void>;
 }
 
@@ -267,9 +268,9 @@ export function useDriveItems(
           return;
         } else {
           // Add account info to files
-          const accounts = serviceAccounts[currentFolderService ?? ''] ?? [];
+          const accounts = serviceAccounts[currentFolderService as ServiceType] ?? [];
           const account = accounts.find(
-            (a) => a.id === currentAccountId
+            (account) => account.id === currentAccountId
           );
 
           if (account) {

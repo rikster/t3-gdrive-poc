@@ -9,6 +9,7 @@ import {
   getAccountMetadata,
   findExistingAccountByEmail,
 } from "~/lib/session";
+import type { ServiceType } from "~/types/services";
 
 // Dropbox API endpoints
 const AUTH_URL = "https://www.dropbox.com/oauth2/authorize";
@@ -43,7 +44,10 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get("code");
   const accountId = searchParams.get("accountId") ?? "default";
-  const storedTokens = await getStoredTokens("dropbox", accountId);
+  const storedTokens = await getStoredTokens(
+    "dropbox" as ServiceType,
+    accountId,
+  );
   const folderId = searchParams.get("folderId") ?? "";
   const addAccount = searchParams.get("addAccount") === "true";
 
@@ -54,7 +58,7 @@ export async function GET(request: NextRequest) {
     } catch (error) {
       console.error("Error with stored tokens:", error);
       // If there's an error with stored tokens, clear them and proceed with new auth
-      await clearTokens("dropbox", accountId);
+      await clearTokens("dropbox" as ServiceType, accountId);
     }
   }
 
@@ -174,13 +178,13 @@ export async function GET(request: NextRequest) {
 
     // If this is a new account, generate a new accountId
     const finalAccountId = parsedState.addAccount
-      ? generateAccountId("dropbox", userInfo?.email)
+      ? generateAccountId("dropbox" as ServiceType, userInfo?.email)
       : parsedState.accountId;
 
     console.log("Using account ID:", finalAccountId);
 
     // Store tokens for future use
-    await storeTokens(tokens, "dropbox", finalAccountId);
+    await storeTokens(tokens, "dropbox" as ServiceType, finalAccountId);
     console.log("Stored Dropbox tokens");
 
     if (userInfo) {
@@ -198,11 +202,11 @@ export async function GET(request: NextRequest) {
       await storeAccountMetadata(
         {
           id: finalAccountId,
-          service: "dropbox",
+          service: "dropbox" as ServiceType,
           name: userInfo.name || "Dropbox Account",
           email: emailValue,
         },
-        "dropbox",
+        "dropbox" as ServiceType,
         finalAccountId,
       );
       console.log("Stored account metadata with email:", emailValue);

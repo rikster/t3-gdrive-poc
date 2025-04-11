@@ -3,7 +3,7 @@
 import Image from "next/image";
 import type { FormEvent, ChangeEvent } from "react";
 
-import type { ServiceAccount } from "~/types/services";
+import type { ServiceAccount, ServiceType } from "~/types/services";
 
 import { AddServiceButton } from "./AddServiceButton";
 import { LogoutButton } from "./LogoutButton";
@@ -14,16 +14,16 @@ import { UploadButton } from "./UploadButton";
 
 interface HeaderProps {
   isAuthenticated: boolean;
-  activeServices: string[];
-  serviceAccounts: Record<string, ServiceAccount[]>;
+  activeServices: ServiceType[];
+  serviceAccounts: Record<ServiceType, ServiceAccount[]>;
   searchInputValue: string;
   onSearchInputChange: (e: ChangeEvent<HTMLInputElement>) => void;
   onSearchSubmit: (e: FormEvent) => void;
   onUpload: () => void;
-  onDisconnectService: (serviceId: string) => void;
-  onDisconnectAccount: (serviceId: string, accountId: string) => void;
-  onServiceSelect: (service: string) => void;
-  onAddAccount: (service: string) => void;
+  onDisconnectService: (serviceId: ServiceType) => void;
+  onDisconnectAccount: (serviceId: ServiceType, accountId: string) => void;
+  onServiceSelect: (service: ServiceType) => void;
+  onAddAccount: (service: ServiceType) => void;
   isAuthenticating?: boolean;
 }
 

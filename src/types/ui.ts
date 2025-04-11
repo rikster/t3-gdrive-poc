@@ -11,24 +11,28 @@ export interface DriveUIProps {
   error?: string | null;
 }
 
-// Import DriveItem to avoid circular dependencies
+// Import types to avoid circular dependencies
 import type { DriveItem } from "./drive";
+import type { ServiceType } from "./services";
 
 /**
  * Props for the DriveItemRow component
  */
 export interface DriveItemRowProps {
   item: DriveItem;
-  serviceAccounts: Record<string, Array<{
-    id: string;
-    service: string;
-    name?: string;
-    email?: string;
-  }>>;
+  serviceAccounts: Record<
+    string,
+    Array<{
+      id: string;
+      service: ServiceType;
+      name?: string;
+      email?: string;
+    }>
+  >;
   isRecursiveSearch: boolean;
   clearSearch: () => void;
   handleFolderClick: (folder: DriveItem) => void;
-  openFile: (fileId: string, service: string, accountId: string) => void;
+  openFile: (fileId: string, service: ServiceType, accountId: string) => void;
 }
 
 /**
@@ -36,6 +40,6 @@ export interface DriveItemRowProps {
  */
 export interface LoadingSpinnerProps {
   containerClassName?: string;
-  spinnerSize?: 'sm' | 'md' | 'lg';
+  spinnerSize?: "sm" | "md" | "lg";
   fullScreen?: boolean;
 }

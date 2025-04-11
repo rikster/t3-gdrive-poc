@@ -2,6 +2,8 @@
  * Item type definitions using discriminated unions
  */
 
+import type { ServiceType } from "./services";
+
 /**
  * Base item interface with common properties for all item types
  */
@@ -10,7 +12,7 @@ export interface BaseItem {
   name: string;
   modifiedAt: string;
   parentId: string | null;
-  service?: string;
+  service?: ServiceType;
   accountId?: string;
   accountName?: string;
   accountEmail?: string;
@@ -66,7 +68,9 @@ export function isFolderItem(item: DriveItemUnion): item is FolderItem {
  * @param data Partial file item data
  * @returns A complete file item
  */
-export function createFileItem(data: Partial<FileItem> & Pick<FileItem, "id" | "name">): FileItem {
+export function createFileItem(
+  data: Partial<FileItem> & Pick<FileItem, "id" | "name">,
+): FileItem {
   return {
     id: data.id,
     name: data.name,
@@ -91,7 +95,9 @@ export function createFileItem(data: Partial<FileItem> & Pick<FileItem, "id" | "
  * @param data Partial folder item data
  * @returns A complete folder item
  */
-export function createFolderItem(data: Partial<FolderItem> & Pick<FolderItem, "id" | "name">): FolderItem {
+export function createFolderItem(
+  data: Partial<FolderItem> & Pick<FolderItem, "id" | "name">,
+): FolderItem {
   return {
     id: data.id,
     name: data.name,

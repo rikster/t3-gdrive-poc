@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getActiveServiceAccounts, getStoredTokens } from "~/lib/session";
 
 import type { SearchResult } from "~/types/drive";
+import type { ServiceType } from "~/types/services";
 
 // Function to search Google Drive recursively
 async function searchGoogleDrive(
@@ -43,7 +44,7 @@ async function searchGoogleDrive(
         : undefined,
       modifiedAt: new Date(file.modifiedTime).toLocaleString(),
       parentId: file.parents?.[0] || null,
-      service: "google",
+      service: "google" as ServiceType,
       accountId,
       accountName,
       accountEmail,
@@ -88,7 +89,7 @@ async function searchOneDrive(
       size: file.size ? `${Math.round(file.size / 1024)} KB` : undefined,
       modifiedAt: new Date(file.lastModifiedDateTime).toLocaleString(),
       parentId: file.parentReference?.id || null,
-      service: "onedrive",
+      service: "onedrive" as ServiceType,
       accountId,
       accountName,
       accountEmail,
@@ -163,7 +164,7 @@ async function searchDropbox(
           ? new Date(metadata.server_modified).toLocaleString()
           : "",
         parentId: metadata.path_lower.split("/").slice(0, -1).join("/") || null,
-        service: "dropbox",
+        service: "dropbox" as ServiceType,
         accountId,
         accountName,
         accountEmail,

@@ -63,7 +63,6 @@
     - [x] Write unit tests for remaining hooks
   - [ ] Write component tests for UI elements
   - [ ] Write integration tests for the full DriveUI component
-  - [ ] Add Storybook stories for all new components
 
 ### Accessibility
 
@@ -79,6 +78,7 @@
   - [ ] Create a dedicated API client for drive operations
   - [ ] Implement proper request/response types
   - [ ] Add request cancellation for aborted operations
+  - [ ] Create a data layer for everything (API and UI, etc.)
 
 ### DriveUI Table 
 
@@ -91,4 +91,10 @@
 
 ### Fix 
 
-- [ ] After disconnecting from a drive update and refresh table. 
+- [ ] After disconnecting from a drive update and refresh table.
+- [ ] Fix tokens timing out and having a refresh token. 
+
+### Continuous Integration (CI), add a GitHub Actions workflow.
+- [ ] Add a GitHub Actions workflow for CI/CD
+  - [ ] Add proper testing and type checking
+  - [ ] Add proper deployment

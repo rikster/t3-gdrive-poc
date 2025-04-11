@@ -9,6 +9,7 @@ import {
   findExistingAccountByEmail,
   isTokenValid,
 } from "~/lib/session";
+import type { ServiceType } from "~/types/services";
 
 // Helper function to create an OAuth2 client
 function createOAuth2Client() {
@@ -38,7 +39,10 @@ export async function GET(request: NextRequest) {
 
   // If not adding a new account, try to use stored tokens
   if (!addAccount) {
-    const storedTokens = await getStoredTokens("google", accountId);
+    const storedTokens = await getStoredTokens(
+      "google" as ServiceType,
+      accountId,
+    );
 
     // If we have stored tokens and no code is provided, check if they're valid
     if (storedTokens && !code) {
@@ -66,7 +70,11 @@ export async function GET(request: NextRequest) {
               expiry_date: tokens.expiry_date ?? Date.now() + 3600 * 1000,
             };
 
-            await storeTokens(updatedTokens, "google", accountId);
+            await storeTokens(
+              updatedTokens,
+              "google" as ServiceType,
+              accountId,
+            );
             oauth2Client.setCredentials(updatedTokens);
             console.log("Token refreshed successfully");
           } catch (refreshError) {
@@ -152,7 +160,7 @@ export async function GET(request: NextRequest) {
     // If this is a new account and we have an email, check if it already exists
     if (parsedState.addAccount && userInfo?.email) {
       const existingAccount = await findExistingAccountByEmail(
-        "google",
+        "google" as ServiceType,
         userInfo.email,
       );
 
@@ -182,7 +190,7 @@ export async function GET(request: NextRequest) {
 
     // If this is a new account, generate a new accountId
     const finalAccountId = parsedState.addAccount
-      ? generateAccountId("google", userInfo?.email)
+      ? generateAccountId("google" as ServiceType, userInfo?.email)
       : parsedState.accountId;
 
     // Format tokens to match our TokenData interface
@@ -195,18 +203,18 @@ export async function GET(request: NextRequest) {
     };
 
     // Store tokens with the appropriate accountId
-    await storeTokens(formattedTokens, "google", finalAccountId);
+    await storeTokens(formattedTokens, "google" as ServiceType, finalAccountId);
 
     // Store account metadata
     if (userInfo) {
       await storeAccountMetadata(
         {
           id: finalAccountId,
-          service: "google",
+          service: "google" as ServiceType,
           name: userInfo.name ?? "Google Drive Account",
           email: userInfo.email,
         },
-        "google",
+        "google" as ServiceType,
         finalAccountId,
       );
     }

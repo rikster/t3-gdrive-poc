@@ -9,6 +9,7 @@ import {
   isFileItem,
   isFolderItem,
 } from "./items";
+import type { ServiceType } from "./services";
 
 /**
  * Represents an item (file or folder) in a cloud storage service
@@ -21,7 +22,7 @@ export interface DriveItem {
   size?: string;
   modifiedAt: string;
   parentId: string | null;
-  service?: string;
+  service?: ServiceType;
   accountId?: string;
   accountName?: string;
   accountEmail?: string;
@@ -38,7 +39,7 @@ export { isFileItem, isFolderItem };
 export interface BreadcrumbItem {
   id: string;
   name: string;
-  service?: string;
+  service?: ServiceType;
   accountId?: string;
 }
 
@@ -53,7 +54,7 @@ export interface SearchResult {
   size?: string;
   modifiedAt: string;
   parentId: string | null;
-  service: string;
+  service: ServiceType;
   accountId: string;
   accountName?: string;
   accountEmail?: string;

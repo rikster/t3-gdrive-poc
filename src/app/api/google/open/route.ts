@@ -2,6 +2,7 @@ import { google } from "googleapis";
 import { type NextRequest } from "next/server";
 import { env } from "~/env";
 import { getStoredTokens } from "~/lib/session";
+import type { ServiceType } from "~/types/services";
 
 // Helper function to create an OAuth2 client
 function createOAuth2Client() {
@@ -21,7 +22,10 @@ export async function GET(request: NextRequest) {
     return Response.json({ error: "File ID is required" }, { status: 400 });
   }
 
-  const storedTokens = await getStoredTokens("google", accountId);
+  const storedTokens = await getStoredTokens(
+    "google" as ServiceType,
+    accountId,
+  );
 
   if (!storedTokens) {
     return Response.json(

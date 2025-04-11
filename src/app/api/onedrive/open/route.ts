@@ -1,6 +1,7 @@
 import { type NextRequest } from "next/server";
 import { getStoredTokens } from "~/lib/session";
 import { Client } from "@microsoft/microsoft-graph-client";
+import type { ServiceType } from "~/types/services";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -11,7 +12,10 @@ export async function GET(request: NextRequest) {
     return Response.json({ error: "File ID is required" }, { status: 400 });
   }
 
-  const storedTokens = await getStoredTokens("onedrive", accountId);
+  const storedTokens = await getStoredTokens(
+    "onedrive" as ServiceType,
+    accountId,
+  );
 
   if (!storedTokens) {
     return Response.json(

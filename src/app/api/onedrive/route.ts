@@ -8,6 +8,7 @@ import {
   findExistingAccountByEmail,
 } from "~/lib/session";
 import { Client } from "@microsoft/microsoft-graph-client";
+import type { ServiceType } from "~/types/services";
 
 // Define interfaces for type safety
 interface OneDriveTokens {
@@ -54,7 +55,10 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get("code");
   const accountId = searchParams.get("accountId") ?? "default";
-  const storedTokens = await getStoredTokens("onedrive", accountId);
+  const storedTokens = await getStoredTokens(
+    "onedrive" as ServiceType,
+    accountId,
+  );
   const folderId = searchParams.get("folderId") ?? "root";
   const addAccount = searchParams.get("addAccount") === "true";
 
@@ -148,7 +152,7 @@ export async function GET(request: NextRequest) {
     // If this is a new account and we have an email, check if it already exists
     if (parsedState.addAccount && userInfo?.email) {
       const existingAccount = await findExistingAccountByEmail(
-        "onedrive",
+        "onedrive" as ServiceType,
         userInfo.email,
       );
 
@@ -178,22 +182,22 @@ export async function GET(request: NextRequest) {
 
     // If this is a new account, generate a new accountId
     const finalAccountId = parsedState.addAccount
-      ? generateAccountId("onedrive", userInfo?.email)
+      ? generateAccountId("onedrive" as ServiceType, userInfo?.email)
       : parsedState.accountId;
 
     // Store tokens for future use
-    await storeTokens(tokens, "onedrive", finalAccountId);
+    await storeTokens(tokens, "onedrive" as ServiceType, finalAccountId);
 
     // Store account metadata
     if (userInfo) {
       await storeAccountMetadata(
         {
           id: finalAccountId,
-          service: "onedrive",
+          service: "onedrive" as ServiceType,
           name: userInfo.name ?? "OneDrive Account",
           email: userInfo.email,
         },
-        "onedrive",
+        "onedrive" as ServiceType,
         finalAccountId,
       );
     }
