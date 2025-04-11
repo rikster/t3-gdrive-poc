@@ -144,47 +144,59 @@ stratafusion/
 pnpm build
 ```
 
-### Testing
+## Testing
 
-The project uses Vitest for unit and component testing, with React Testing Library for component tests.
-
-#### Running Tests
+The project uses Vitest for testing. Here are the available test commands:
 
 ```bash
-# Run all tests
+# Run tests once
 pnpm test
 
-# Run tests in watch mode during development
+# Run tests in watch mode (recommended during development)
 pnpm test:watch
-
-# Generate test coverage report
-pnpm test:coverage
 
 # Run tests with UI
 pnpm test:ui
+
+# Run tests with coverage report
+pnpm test:coverage
 ```
 
-#### Test Structure
+### Writing Tests
 
-Tests are co-located with the files they test:
+Tests are co-located with their components in `*.test.tsx` files. Each test file should follow these conventions:
 
+1. Import the component and its dependencies
+2. Mock any external dependencies (contexts, hooks, etc.)
+3. Write test cases for:
+   - Expected use cases
+   - Edge cases
+   - Error states
+
+Example test structure:
+
+```tsx
+import { render, screen } from '@testing-library/react'
+import { describe, it, expect } from 'vitest'
+import YourComponent from './YourComponent'
+
+describe('YourComponent', () => {
+  it('renders successfully', () => {
+    render(<YourComponent />)
+    expect(screen.getByText('Expected Text')).toBeInTheDocument()
+  })
+
+  it('handles edge cases', () => {
+    render(<YourComponent prop={undefined} />)
+    expect(screen.getByText('Fallback')).toBeInTheDocument()
+  })
+
+  it('shows error state', () => {
+    render(<YourComponent error="Error message" />)
+    expect(screen.getByText('Error message')).toBeInTheDocument()
+  })
+})
 ```
-src/
-├── components/
-│   └── Button/
-│       ├── Button.tsx
-│       └── Button.test.tsx
-├── lib/
-│   ├── utils.ts
-│   └── utils.test.ts
-```
-
-#### Writing Tests
-
-- **Unit Tests**: Test utility functions and services in isolation
-- **Component Tests**: Test UI components with React Testing Library
-- **API Tests**: Test API routes with mocked requests and responses
-- **Integration Tests**: Test interactions between components and services
 
 ## Contributing
 

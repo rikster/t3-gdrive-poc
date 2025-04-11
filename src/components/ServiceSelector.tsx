@@ -20,7 +20,7 @@ interface ServiceAccount {
 
 interface ServiceSelectorProps {
   activeServices: string[];
-  serviceAccounts: ServiceAccount[];
+  serviceAccounts: Record<string, ServiceAccount[]>;
   onDisconnectService: (serviceId: string) => void;
   onDisconnectAccount: (serviceId: string, accountId: string) => void;
 }
@@ -55,13 +55,11 @@ export function ServiceSelector({
     return activeServices.map((service) => getServiceName(service)).join(", ");
   }, [activeServices]);
 
-  // Group accounts by service - memoized to prevent recalculation on every render
+  // The accounts are already grouped by service, just need to ensure all active services have an entry
   const accountsByService = useMemo(() => {
     return activeServices.reduce<Record<string, ServiceAccount[]>>(
       (acc, service) => {
-        acc[service] = serviceAccounts.filter(
-          (account) => account.service === service,
-        );
+        acc[service] = serviceAccounts[service] ?? [];
         return acc;
       },
       {},

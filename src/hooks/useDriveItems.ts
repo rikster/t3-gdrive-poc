@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+
+import type { DriveItem } from "~/types/drive";
+
 import { useDrive } from "~/contexts/DriveContext";
 import { useDriveNavigation } from "./useDriveNavigation";
-import type { DriveItem } from "~/types/drive";
 
 interface UseDriveItemsResult {
   items: DriveItem[];
@@ -180,7 +182,7 @@ export function useDriveItems(
 
   // Main function to fetch files
   const fetchFiles = async (folderId: string) => {
-    if (initialItems || !isAuthenticated || serviceAccounts.length === 0) {
+    if (initialItems || !isAuthenticated || Object.keys(serviceAccounts).length === 0) {
       return; // Don't fetch if we're using props or not authenticated
     }
 
@@ -197,7 +199,7 @@ export function useDriveItems(
         const serviceResults: Record<string, DriveItem[]> = {};
 
         // Create a promise for each account
-        const allFilesPromises = serviceAccounts.map(async (account) => {
+        const allFilesPromises = Object.values(serviceAccounts).flat().map(async (account) => {
           const result = await fetchFilesFromService(
             account.service,
             "root",
@@ -265,9 +267,9 @@ export function useDriveItems(
           return;
         } else {
           // Add account info to files
-          const account = serviceAccounts.find(
-            (a) =>
-              a.service === currentFolderService && a.id === currentAccountId,
+          const accounts = serviceAccounts[currentFolderService ?? ''] ?? [];
+          const account = accounts.find(
+            (a) => a.id === currentAccountId
           );
 
           if (account) {
