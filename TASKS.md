@@ -83,8 +83,12 @@
 ### DriveUI Table 
 
 - [ ] Refactor DriveUI Table
-- [ ] FUse Icon/Image instead of text for service
-- [ ] Add proper skeleton loader states
-- [ ] Add proper pagination with page size
-- [ ] Sort by column
-- [ ] Filter by column - eg. only show this service account
+  - [ ] Use Icon/Image instead of text for service
+  - [ ] Add proper skeleton loader states
+  - [ ] Add proper pagination with page size
+  - [ ] Sort by column
+  - [ ] Filter by column - eg. only show this service account
+
+### Fix 
+
+- [ ] After disconnecting from a drive update and refresh table. 

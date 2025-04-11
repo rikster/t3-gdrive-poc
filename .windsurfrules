@@ -12,7 +12,7 @@
 
 ### 🧪 Testing & Reliability
 
-- **Always create unit tests for new features** (functions, classes, routes, etc).
+- **Always create unit tests for new features**
 - **After updating any logic**, check whether existing unit tests need to be updated. If so, do it.
 - **Tests should live relatively** mirroring the main app structure.
   - Include at least:
