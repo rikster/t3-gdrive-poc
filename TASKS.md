@@ -79,3 +79,12 @@
   - [ ] Create a dedicated API client for drive operations
   - [ ] Implement proper request/response types
   - [ ] Add request cancellation for aborted operations
+
+### DriveUI Table 
+
+- [ ] Refactor DriveUI Table
+- [ ] FUse Icon/Image instead of text for service
+- [ ] Add proper skeleton loader states
+- [ ] Add proper pagination with page size
+- [ ] Sort by column
+- [ ] Filter by column - eg. only show this service account
