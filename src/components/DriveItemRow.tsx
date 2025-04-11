@@ -1,11 +1,14 @@
 "use client";
 
+import { FileIcon, FolderIcon } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { TableRow, TableCell } from "~/components/ui/table";
-import { FileIcon, FolderIcon } from "lucide-react";
 
 import type { DriveItem } from "~/types/drive";
+import type { ServiceAccount, ServiceType } from "~/types/services";
 import type { DriveItemRowProps } from "~/types/ui";
+
+type ServiceAccounts = Record<ServiceType, ServiceAccount[]>;
 
 export function DriveItemRow({
   item,
@@ -36,57 +39,38 @@ export function DriveItemRow({
   // Function to get combined service and account display for table
   const getServiceAccountDisplay = (item: DriveItem) => {
     const serviceName = getServiceName(item.service);
+    const service = item.service;
 
-    // Special handling for Dropbox with extra logging
-    if (item.service === "dropbox") {
-      // Get account from serviceAccounts
-      const account = serviceAccounts.find(
-        (a) => a.service === "dropbox" && a.id === item.accountId,
-      );
-
-      // Find any Dropbox account with an email
-      const anyDropboxAccount = serviceAccounts.find(
-        (a) => a.service === "dropbox" && a.email,
-      );
-
-      // Force a value for Dropbox accounts
-      if (account?.email) {
-        return `${serviceName} - ${account.email}`;
-      } else if (anyDropboxAccount?.email) {
-        return `${serviceName} - ${anyDropboxAccount.email}`;
-      } else if (item.accountEmail) {
-        return `${serviceName} - ${item.accountEmail}`;
-      } else {
-        // Hard fallback for Dropbox accounts - get the first email from any service account
-        const anyAccount = serviceAccounts.find((a) => a.email);
-        if (anyAccount?.email) {
-          return `${serviceName} - ${anyAccount.email}`;
-        }
-        // Ultimate fallback - force display an email
-        return `${serviceName} - rhounslow@gmail.com`;
-      }
+    const serviceAccounts_ = serviceAccounts as ServiceAccounts;
+    if (!service || !serviceAccounts_[service]) {
+      return serviceName;
     }
 
-    // Try to get email from various sources
-    let email = "";
+    // Get account from serviceAccounts
+    const accounts = serviceAccounts_[service] ?? [];
+    const account = accounts.find(
+      (a: ServiceAccount) => a.id === item.accountId
+    );
 
-    // First check the item itself
-    if (item.accountEmail !== undefined && item.accountEmail !== null) {
-      email = item.accountEmail;
-    }
-    // Then check service accounts
-    else if (item.service && item.accountId) {
-      const account = serviceAccounts.find(
-        (a) => a.service === item.service && a.id === item.accountId,
-      );
-      if (account?.email) {
-        email = account.email;
-      }
+    // Find any account with an email
+    const anyAccountWithEmail = accounts.find(
+      (a: ServiceAccount) => a.email
+    );
+
+    if (account?.email) {
+      return `${serviceName} - ${account.email}`;
     }
 
-    // Return formatted display
-    return email ? `${serviceName} - ${email}` : serviceName;
+    // If no email found for this account but another account has one
+    if (anyAccountWithEmail?.email) {
+      return `${serviceName} - ${anyAccountWithEmail.email}`;
+    }
+
+    // If no email found at all
+    return `${serviceName} - ${item.accountId ?? 'Unknown'}`;
   };
+
+
 
   return (
     <TableRow
