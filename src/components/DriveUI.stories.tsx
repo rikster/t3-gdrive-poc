@@ -16,9 +16,9 @@ const mockDriveContextValue: DriveContextType = {
   disconnectService: () => {}, // Mock function
   disconnectAccount: () => {}, // Mock function
   logout: () => {}, // Mock function
-  currentService: 'googledrive',
-  activeServices: ['googledrive', 'onedrive'],
-  serviceAccounts: [], // Mock empty service accounts array
+  currentService: 'google',
+  activeServices: ['google', 'onedrive'],
+  serviceAccounts: { google: [], onedrive: [], dropbox: [] }, // Mock empty service accounts object
   isAuthenticating: false,
   searchQuery: "",
   setSearchQuery: () => {}, // Mock function

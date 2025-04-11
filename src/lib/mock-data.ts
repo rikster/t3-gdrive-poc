@@ -1,4 +1,5 @@
 import type { DriveItem } from "~/types/drive";
+import type { ServiceType } from "~/types/services";
 
 export const mockDriveData: DriveItem[] = [
   {
@@ -7,7 +8,7 @@ export const mockDriveData: DriveItem[] = [
     type: "folder",
     modifiedAt: "2025-02-20",
     parentId: "root",
-    service: "googledrive",
+    service: "google" as ServiceType,
   },
   {
     id: "folder2",
@@ -15,7 +16,7 @@ export const mockDriveData: DriveItem[] = [
     type: "folder",
     modifiedAt: "2025-02-19",
     parentId: "root",
-    service: "onedrive",
+    service: "onedrive" as ServiceType,
   },
   {
     id: "file1",
@@ -24,7 +25,7 @@ export const mockDriveData: DriveItem[] = [
     size: "2.5 MB",
     modifiedAt: "2025-02-18",
     parentId: "folder1",
-    service: "googledrive",
+    service: "google" as ServiceType,
   },
   {
     id: "file2",
@@ -33,7 +34,7 @@ export const mockDriveData: DriveItem[] = [
     size: "500 KB",
     modifiedAt: "2025-02-17",
     parentId: "folder1",
-    service: "googledrive",
+    service: "google" as ServiceType,
   },
   {
     id: "file3",
@@ -42,6 +43,6 @@ export const mockDriveData: DriveItem[] = [
     size: "1.2 MB",
     modifiedAt: "2025-02-16",
     parentId: "folder2",
-    service: "onedrive",
+    service: "onedrive" as ServiceType,
   },
 ];

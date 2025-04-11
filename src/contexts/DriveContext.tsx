@@ -10,7 +10,7 @@ import React, {
   useRef,
 } from "react";
 import { ErrorDialog } from "~/components/ErrorDialog";
-import type { ServiceAccount } from "~/types/services";
+import type { ServiceAccount, ServiceType } from "~/types/services";
 import { useRouter } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useDriveSearch } from "~/hooks/useDriveSearch";
@@ -20,14 +20,14 @@ import type { DriveItem } from "~/types/drive";
 export interface DriveContextType {
   isAuthenticated: boolean;
   isClerkAuthenticated: boolean;
-  authenticateService: (serviceId: string) => void;
-  addNewAccount: (serviceId: string) => void;
-  disconnectService: (serviceId: string) => void;
-  disconnectAccount: (serviceId: string, accountId: string) => void;
+  authenticateService: (serviceId: ServiceType) => void;
+  addNewAccount: (serviceId: ServiceType) => void;
+  disconnectService: (serviceId: ServiceType) => void;
+  disconnectAccount: (serviceId: ServiceType, accountId: string) => void;
   logout: () => void;
-  currentService: string | null;
-  activeServices: string[];
-  serviceAccounts: ServiceAccount[];
+  currentService: ServiceType | null;
+  activeServices: ServiceType[];
+  serviceAccounts: Record<ServiceType, ServiceAccount[]>;
   isAuthenticating: boolean;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -36,7 +36,7 @@ export interface DriveContextType {
   performSearch: (query: string) => void;
   clearSearch: () => void;
   isRecursiveSearch: boolean;
-  openFile: (fileId: string, service: string, accountId?: string) => void;
+  openFile: (fileId: string, service: ServiceType, accountId?: string) => void;
 }
 
 export const DriveContext = createContext<DriveContextType>({
@@ -48,8 +48,8 @@ export const DriveContext = createContext<DriveContextType>({
   disconnectAccount: () => undefined,
   logout: () => undefined,
   currentService: null,
-  activeServices: [],
-  serviceAccounts: [],
+  activeServices: [] as ServiceType[],
+  serviceAccounts: {} as Record<ServiceType, ServiceAccount[]>,
   isAuthenticating: false,
   searchQuery: "",
   setSearchQuery: () => undefined,
@@ -68,10 +68,15 @@ export function DriveProvider({ children }: { children: ReactNode }) {
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isClerkAuthenticated, setIsClerkAuthenticated] = useState(false);
-  const [currentService, setCurrentService] = useState<string | null>(null);
-  const [activeServices, setActiveServices] = useState<string[]>([]);
-  const [serviceAccounts, setServiceAccounts] = useState<ServiceAccount[]>([]);
+  const [currentService, setCurrentService] = useState<ServiceType | null>(
+    null,
+  );
+  const [activeServices, setActiveServices] = useState<ServiceType[]>([]);
+  const [serviceAccounts, setServiceAccounts] = useState<
+    Record<ServiceType, ServiceAccount[]>
+  >({ google: [], onedrive: [], dropbox: [] });
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const {
     searchQuery,
     setSearchQuery,
@@ -218,7 +223,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         // If not signed in, reset all auth state
         setIsAuthenticated(false);
         setActiveServices([]);
-        setServiceAccounts([]);
+        setServiceAccounts({ google: [], onedrive: [], dropbox: [] });
         return;
       }
 
@@ -226,7 +231,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         const response = await fetch("/api/auth/status");
         const data = (await response.json()) as {
           isAuthenticated: boolean;
-          activeServices?: string[];
+          activeServices?: ServiceType[];
           serviceAccounts?: ServiceAccount[];
         };
 
@@ -242,27 +247,46 @@ export function DriveProvider({ children }: { children: ReactNode }) {
             data.activeServices.some((s, i) => activeServices[i] !== s);
 
           if (servicesChanged) {
-            setActiveServices(data.activeServices);
+            setActiveServices(data.activeServices as ServiceType[]);
 
             if (data.activeServices.length > 0 && !currentService) {
               // Ensure we have a valid string before setting current service
               const firstService = data.activeServices[0];
               if (typeof firstService === "string") {
-                setCurrentService(firstService);
+                setCurrentService(firstService as ServiceType);
               }
             }
           }
         }
 
         if (data.serviceAccounts && Array.isArray(data.serviceAccounts)) {
+          // Transform array into Record<string, ServiceAccount[]>
+          const accountsByService = data.serviceAccounts.reduce<
+            Record<ServiceType, ServiceAccount[]>
+          >(
+            (acc, account) => {
+              const service = account.service as ServiceType;
+              if (!acc[service]) {
+                acc[service] = [];
+              }
+              acc[service].push(account);
+              return acc;
+            },
+            { google: [], onedrive: [], dropbox: [] },
+          );
+
           // Only update if the accounts have changed
-          const accountsChanged =
-            data.serviceAccounts.length !== serviceAccounts.length ||
-            JSON.stringify(data.serviceAccounts) !==
-              JSON.stringify(serviceAccounts);
+          const accountsChanged = (
+            Object.keys(accountsByService) as ServiceType[]
+          ).some((service) => {
+            return (
+              JSON.stringify(accountsByService[service]) !==
+              JSON.stringify(serviceAccounts[service])
+            );
+          });
 
           if (accountsChanged) {
-            setServiceAccounts(data.serviceAccounts);
+            setServiceAccounts(accountsByService);
           }
         }
       } catch (error) {
@@ -277,7 +301,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   }, [isSignedIn]);
 
   const authenticateService = useCallback(
-    async (serviceId: string) => {
+    async (serviceId: ServiceType) => {
       // Prevent multiple authentication attempts
       if (isAuthenticating) return;
 
@@ -305,7 +329,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   );
 
   const addNewAccount = useCallback(
-    async (serviceId: string) => {
+    async (serviceId: ServiceType) => {
       // Prevent multiple authentication attempts
       if (isAuthenticating) return;
 
@@ -333,7 +357,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   );
 
   const disconnectService = useCallback(
-    async (serviceId: string) => {
+    async (serviceId: ServiceType) => {
       try {
         await fetch(`/api/auth/disconnect?service=${serviceId}`, {
           method: "POST",
@@ -343,9 +367,14 @@ export function DriveProvider({ children }: { children: ReactNode }) {
           prevServices.filter((service) => service !== serviceId),
         );
 
-        setServiceAccounts((prevAccounts) =>
-          prevAccounts.filter((account) => account.service !== serviceId),
-        );
+        setServiceAccounts((prevAccounts) => {
+          const newAccounts = { ...prevAccounts } as Record<
+            ServiceType,
+            ServiceAccount[]
+          >;
+          delete newAccounts[serviceId];
+          return newAccounts;
+        });
 
         if (currentService === serviceId) {
           setCurrentService(null);
@@ -357,14 +386,15 @@ export function DriveProvider({ children }: { children: ReactNode }) {
           setIsAuthenticated(false);
         }
       } catch (error) {
-        console.error("Failed to disconnect service:", error);
+        // Handle error silently
+        setError("Failed to disconnect service");
       }
     },
     [activeServices, currentService],
   );
 
   const disconnectAccount = useCallback(
-    async (serviceId: string, accountId: string) => {
+    async (serviceId: ServiceType, accountId: string) => {
       try {
         await fetch(
           `/api/auth/disconnect?service=${serviceId}&accountId=${accountId}`,
@@ -373,15 +403,19 @@ export function DriveProvider({ children }: { children: ReactNode }) {
 
         // Update service accounts state
         setServiceAccounts((prevAccounts) => {
-          const newAccounts = prevAccounts.filter(
-            (account) =>
-              !(account.service === serviceId && account.id === accountId),
-          );
+          const newAccounts = { ...prevAccounts } as Record<
+            ServiceType,
+            ServiceAccount[]
+          >;
+          if (newAccounts[serviceId]) {
+            newAccounts[serviceId] = newAccounts[serviceId].filter(
+              (account) => account.id !== accountId,
+            );
+          }
 
           // Check if this was the last account for this service
-          const remainingAccountsForService = newAccounts.filter(
-            (account) => account.service === serviceId,
-          );
+          const remainingAccountsForService =
+            newAccounts[serviceId as ServiceType] || [];
 
           // If no accounts left for this service, update active services
           if (remainingAccountsForService.length === 0) {
@@ -395,17 +429,21 @@ export function DriveProvider({ children }: { children: ReactNode }) {
           }
 
           // If no accounts left at all, set not authenticated
-          if (newAccounts.length === 0) {
+          const hasAccounts = Object.values(newAccounts).some(
+            (accounts) => accounts.length > 0,
+          );
+          if (!hasAccounts) {
             setIsAuthenticated(false);
           }
 
           return newAccounts;
         });
       } catch (error) {
-        console.error("Failed to disconnect account:", error);
+        // Handle error silently
+        setError("Failed to disconnect account");
       }
     },
-    [serviceAccounts, currentService],
+    [currentService],
   );
 
   const logout = () => {
@@ -416,7 +454,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
 
   const openFile = async (
     fileId: string,
-    service: string,
+    service: ServiceType,
     accountId?: string,
   ) => {
     try {
@@ -462,16 +500,16 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         value={{
           isAuthenticated,
           isClerkAuthenticated,
-          authenticateService: (serviceId: string) => {
+          authenticateService: (serviceId: ServiceType) => {
             void authenticateService(serviceId);
           },
-          addNewAccount: (serviceId: string) => {
+          addNewAccount: (serviceId: ServiceType) => {
             void addNewAccount(serviceId);
           },
-          disconnectService: (serviceId: string) => {
+          disconnectService: (serviceId: ServiceType) => {
             void disconnectService(serviceId);
           },
-          disconnectAccount: (serviceId: string, accountId: string) => {
+          disconnectAccount: (serviceId: ServiceType, accountId: string) => {
             void disconnectAccount(serviceId, accountId);
           },
           logout,
@@ -488,7 +526,11 @@ export function DriveProvider({ children }: { children: ReactNode }) {
           },
           clearSearch,
           isRecursiveSearch,
-          openFile: (fileId: string, service: string, accountId?: string) => {
+          openFile: (
+            fileId: string,
+            service: ServiceType,
+            accountId?: string,
+          ) => {
             void openFile(fileId, service, accountId);
           },
         }}

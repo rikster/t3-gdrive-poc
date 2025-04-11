@@ -1,33 +1,29 @@
 "use client";
 
-import { FormEvent, ChangeEvent } from "react";
 import Image from "next/image";
-import { SearchInput } from "./SearchInput";
-import { UploadButton } from "./UploadButton";
-import { ServiceSelector } from "./ServiceSelector";
-import { LogoutButton } from "./LogoutButton";
-import { ThemeToggle } from "./theme/ThemeToggle";
-import { AddServiceButton } from "./AddServiceButton";
+import type { FormEvent, ChangeEvent } from "react";
 
-interface ServiceAccount {
-  id: string;
-  service: string;
-  name?: string;
-  email?: string;
-}
+import type { ServiceAccount, ServiceType } from "~/types/services";
+
+import { AddServiceButton } from "./AddServiceButton";
+import { LogoutButton } from "./LogoutButton";
+import { SearchInput } from "./SearchInput";
+import { ServiceSelector } from "./ServiceSelector";
+import { ThemeToggle } from "./theme/ThemeToggle";
+import { UploadButton } from "./UploadButton";
 
 interface HeaderProps {
   isAuthenticated: boolean;
-  activeServices: string[];
-  serviceAccounts: ServiceAccount[];
+  activeServices: ServiceType[];
+  serviceAccounts: Record<ServiceType, ServiceAccount[]>;
   searchInputValue: string;
   onSearchInputChange: (e: ChangeEvent<HTMLInputElement>) => void;
   onSearchSubmit: (e: FormEvent) => void;
   onUpload: () => void;
-  onDisconnectService: (serviceId: string) => void;
-  onDisconnectAccount: (serviceId: string, accountId: string) => void;
-  onServiceSelect: (service: string) => void;
-  onAddAccount: (service: string) => void;
+  onDisconnectService: (serviceId: ServiceType) => void;
+  onDisconnectAccount: (serviceId: ServiceType, accountId: string) => void;
+  onServiceSelect: (service: ServiceType) => void;
+  onAddAccount: (service: ServiceType) => void;
   isAuthenticating?: boolean;
 }
 

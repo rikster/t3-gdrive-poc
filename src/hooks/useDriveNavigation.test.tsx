@@ -3,6 +3,7 @@ import { renderHook, act } from "@testing-library/react";
 import { useDriveNavigation } from "./useDriveNavigation";
 import { DriveContext } from "~/contexts/DriveContext";
 import type { DriveItem } from "~/types/drive";
+import type { ServiceType } from "~/types/services";
 
 // Mock next/navigation
 vi.mock("next/navigation", () => {
@@ -71,7 +72,7 @@ const mockDriveContext = {
   disconnectAccount: vi.fn(),
   logout: vi.fn(),
   currentService: null,
-  activeServices: ["google", "onedrive"],
+  activeServices: ["google", "onedrive"] as ServiceType[],
   serviceAccounts: [],
   isAuthenticating: false,
   searchQuery: "",

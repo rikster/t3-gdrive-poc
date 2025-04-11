@@ -1,25 +1,17 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableRow,
-  TableCell,
-} from "~/components/ui/table";
-import { Header } from "./Header";
-import { DriveItemRow } from "./DriveItemRow";
-import { useDrive } from "~/contexts/DriveContext";
-import { LoadingSpinner } from "./ui/loading-spinner";
-import { DriveBreadcrumb } from "./DriveBreadcrumb";
-import { DriveErrorState } from "./DriveErrorState";
-import { useDriveNavigation } from "~/hooks/useDriveNavigation";
-import { useDriveItems } from "~/hooks/useDriveItems";
 
+import { useDrive } from "~/contexts/DriveContext";
+import { useDriveItems } from "~/hooks/useDriveItems";
+import { useDriveNavigation } from "~/hooks/useDriveNavigation";
 import type { DriveItem } from "~/types/drive";
+import type { ServiceType } from "~/types/services";
 import type { DriveUIProps } from "~/types/ui";
+
+import { DriveBreadcrumb } from "./DriveBreadcrumb";
+import { DriveTable } from "./DriveTable";
+import { Header } from "./Header";
 
 export function DriveUI({
   items: initialItems,
@@ -67,15 +59,15 @@ export function DriveUI({
     alert("Upload functionality would go here!");
   };
 
-  const handleServiceSelect = (serviceId: string) => {
+  const handleServiceSelect = (serviceId: ServiceType) => {
     authenticateService(serviceId);
   };
 
-  const handleAddAccount = (serviceId: string) => {
+  const handleAddAccount = (serviceId: ServiceType) => {
     addNewAccount(serviceId);
   };
 
-  const handleDisconnectService = (serviceId: string) => {
+  const handleDisconnectService = (serviceId: ServiceType) => {
     // If we're currently viewing a folder from this service, go back to root
     if (currentFolderService === serviceId) {
       navigateToRoot();
@@ -90,7 +82,7 @@ export function DriveUI({
       navigateToRoot();
     }
 
-    disconnectAccount(serviceId, accountId);
+    void disconnectAccount(serviceId as ServiceType, accountId);
   };
 
   // Handle search input changes
@@ -181,7 +173,7 @@ export function DriveUI({
                 type: "folder",
                 modifiedAt: "",
                 parentId: null,
-                service: item.service,
+                service: item.service as ServiceType | undefined,
                 accountId: item.accountId,
               };
               handleFolderClick(folderItem);
@@ -189,69 +181,21 @@ export function DriveUI({
             className="mb-4"
           />
           <div className="overflow-hidden rounded-lg border bg-white dark:border-gray-800 dark:bg-gray-950">
-            {error && typeof error === "string" && (
-              <DriveErrorState
-                error={error}
-                onRetry={() => {
-                  void fetchFiles(currentFolder);
-                }}
-              />
-            )}
-            <div className="relative">
-              {isLoading || isAuthenticating || isSearching ? (
-                <div className="py-16">
-                  <LoadingSpinner />
-                  <p className="text-muted-foreground text-center">
-                    {isSearching ? "Searching..." : "Loading files..."}
-                  </p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-gray-100 dark:hover:bg-gray-800">
-                      <TableHead className="sticky top-0 w-[45%] bg-gray-50 dark:bg-gray-900">
-                        Name
-                      </TableHead>
-                      <TableHead className="sticky top-0 w-[20%] bg-gray-50 text-right dark:bg-gray-900">
-                        Modified
-                      </TableHead>
-                      <TableHead className="sticky top-0 w-[15%] bg-gray-50 text-right dark:bg-gray-900">
-                        Size
-                      </TableHead>
-                      <TableHead className="sticky top-0 w-[20%] bg-gray-50 text-right dark:bg-gray-900">
-                        Service & Account
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredItems.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={4} className="py-8 text-center">
-                          {searchQuery
-                            ? `No files match "${searchQuery}"`
-                            : "No files found in this folder"}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredItems.map((item) => (
-                        <DriveItemRow
-                          key={`${String(item.service ?? "")}-${String(item.accountId ?? "default")}-${String(item.id)}`}
-                          item={item}
-                          serviceAccounts={serviceAccounts}
-                          isRecursiveSearch={isRecursiveSearch}
-                          clearSearch={() => {
-                            clearSearch();
-                            setSearchInputValue("");
-                          }}
-                          handleFolderClick={handleFolderClick}
-                          openFile={openFile}
-                        />
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              )}
-            </div>
+            <DriveTable
+              items={filteredItems}
+              isLoading={isLoading || isAuthenticating || isSearching}
+              error={error}
+              onRetry={() => void fetchFiles(currentFolder)}
+              serviceAccounts={serviceAccounts}
+              isRecursiveSearch={isRecursiveSearch}
+              clearSearch={() => {
+                clearSearch();
+                setSearchInputValue("");
+              }}
+              handleFolderClick={handleFolderClick}
+              openFile={openFile}
+              searchQuery={searchQuery}
+            />
           </div>
         </div>
       </div>

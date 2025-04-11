@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { ChevronRight, Home } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
+import type { ServiceType } from "~/types/services";
 
 interface BreadcrumbItem {
   id: string;
   name: string;
-  service?: string;
+  service?: ServiceType;
   accountId?: string;
 }
 

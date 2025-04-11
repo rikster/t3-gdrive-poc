@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useDrive } from "~/contexts/DriveContext";
 import type { DriveItem, BreadcrumbItem } from "~/types/drive";
+import type { ServiceType } from "~/types/services";
 
 export function useDriveNavigation() {
   const searchParams = useSearchParams();
@@ -11,9 +12,8 @@ export function useDriveNavigation() {
 
   // Navigation state
   const [currentFolder, setCurrentFolder] = useState<string>("root");
-  const [currentFolderService, setCurrentFolderService] = useState<
-    string | null
-  >(null);
+  const [currentFolderService, setCurrentFolderService] =
+    useState<ServiceType | null>(null);
   const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
   const [breadcrumbPath, setBreadcrumbPath] = useState<BreadcrumbItem[]>([]);
 
@@ -41,7 +41,7 @@ export function useDriveNavigation() {
     }
 
     if (folder.service) {
-      setCurrentFolderService(folder.service);
+      setCurrentFolderService(folder.service as ServiceType);
       setCurrentAccountId(folder.accountId ?? null);
     }
 
@@ -56,7 +56,7 @@ export function useDriveNavigation() {
         {
           id: folder.id,
           name: folder.name,
-          service: folder.service,
+          service: folder.service as ServiceType | undefined,
           accountId: folder.accountId,
         },
       ]);
@@ -73,7 +73,7 @@ export function useDriveNavigation() {
           {
             id: folder.id,
             name: folder.name,
-            service: folder.service,
+            service: folder.service as ServiceType | undefined,
             accountId: folder.accountId,
           },
         ]);
@@ -125,13 +125,13 @@ export function useDriveNavigation() {
         type: "folder",
         modifiedAt: "",
         parentId: null,
-        service: service ?? undefined,
+        service: (service as ServiceType) ?? undefined,
         accountId: accountId ?? undefined,
       };
 
       // Update state without calling updateURL to avoid infinite loop
       if (folderItem.service) {
-        setCurrentFolderService(folderItem.service);
+        setCurrentFolderService(folderItem.service as ServiceType);
         setCurrentAccountId(folderItem.accountId ?? null);
       }
       setCurrentFolder(folderItem.id);
@@ -181,7 +181,7 @@ export function useDriveNavigation() {
       // Update state without calling updateURL
       if (folderId !== currentFolder) {
         if (service) {
-          setCurrentFolderService(service);
+          setCurrentFolderService(service as ServiceType);
           setCurrentAccountId(accountId ?? null);
         }
         setCurrentFolder(folderId);
