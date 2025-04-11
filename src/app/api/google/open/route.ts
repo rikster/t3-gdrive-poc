@@ -1,15 +1,14 @@
 import { google } from "googleapis";
 import { type NextRequest } from "next/server";
-import { env } from "~/env";
 import { getStoredTokens } from "~/lib/session";
 import type { ServiceType } from "~/types/services";
 
 // Helper function to create an OAuth2 client
 function createOAuth2Client() {
   return new google.auth.OAuth2(
-    env.GOOGLE_CLIENT_ID,
-    env.GOOGLE_CLIENT_SECRET,
-    env.GOOGLE_REDIRECT_URI,
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_REDIRECT_URI,
   );
 }
 

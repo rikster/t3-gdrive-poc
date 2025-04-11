@@ -1,5 +1,4 @@
 import { type NextRequest } from "next/server";
-import { env } from "~/env";
 import {
   getStoredTokens,
   storeTokens,
@@ -74,7 +73,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Dropbox OAuth URL
-    const authUrl = `${AUTH_URL}?client_id=${env.DROPBOX_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(env.DROPBOX_REDIRECT_URI)}&token_access_type=offline&scope=${encodeURIComponent(SCOPES)}&state=${encodeURIComponent(state)}${forceReauth}`;
+    const authUrl = `${AUTH_URL}?client_id=${process.env.DROPBOX_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.DROPBOX_REDIRECT_URI)}&token_access_type=offline&scope=${encodeURIComponent(SCOPES)}&state=${encodeURIComponent(state)}${forceReauth}`;
     console.log("Redirecting to Dropbox auth URL:", authUrl);
     return Response.json({ url: authUrl });
   }
@@ -107,10 +106,10 @@ export async function GET(request: NextRequest) {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: new URLSearchParams({
-        client_id: env.DROPBOX_CLIENT_ID,
-        client_secret: env.DROPBOX_CLIENT_SECRET,
+        client_id: process.env.DROPBOX_CLIENT_ID,
+        client_secret: process.env.DROPBOX_CLIENT_SECRET,
         code,
-        redirect_uri: env.DROPBOX_REDIRECT_URI,
+        redirect_uri: process.env.DROPBOX_REDIRECT_URI,
         grant_type: "authorization_code",
       }).toString(),
     });
@@ -155,7 +154,7 @@ export async function GET(request: NextRequest) {
         console.log("Found existing account with same email:", existingAccount);
         // Account with this email already exists, redirect to home with error message
         // Use NEXT_PUBLIC_SITE_URL for consistent URLs across environments
-        const errorUrl = new URL("/", env.NEXT_PUBLIC_SITE_URL);
+        const errorUrl = new URL("/", process.env.NEXT_PUBLIC_SITE_URL);
 
         // Add a timestamp to prevent browser caching issues
         const timestamp = Date.now();
@@ -214,7 +213,7 @@ export async function GET(request: NextRequest) {
 
     // Redirect to main page after successful authentication
     // Use NEXT_PUBLIC_SITE_URL for consistent URLs across environments
-    return Response.redirect(`${env.NEXT_PUBLIC_SITE_URL}/`);
+    return Response.redirect(`${process.env.NEXT_PUBLIC_SITE_URL}/`);
   } catch (error) {
     console.error("Error in Dropbox authentication:", error);
     return Response.json(

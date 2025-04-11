@@ -1,6 +1,5 @@
 import { google } from "googleapis";
 import { type NextRequest } from "next/server";
-import { env } from "~/env";
 import {
   getStoredTokens,
   storeTokens,
@@ -14,9 +13,9 @@ import type { ServiceType } from "~/types/services";
 // Helper function to create an OAuth2 client
 function createOAuth2Client() {
   return new google.auth.OAuth2(
-    env.GOOGLE_CLIENT_ID,
-    env.GOOGLE_CLIENT_SECRET,
-    env.GOOGLE_REDIRECT_URI,
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_REDIRECT_URI,
   );
 }
 
@@ -167,7 +166,7 @@ export async function GET(request: NextRequest) {
       if (existingAccount) {
         // Account with this email already exists, redirect to home with error message
         // Use NEXT_PUBLIC_SITE_URL for consistent URLs across environments
-        const errorUrl = new URL("/", env.NEXT_PUBLIC_SITE_URL);
+        const errorUrl = new URL("/", process.env.NEXT_PUBLIC_SITE_URL);
 
         // Add a timestamp to prevent browser caching issues
         const timestamp = Date.now();
@@ -221,7 +220,7 @@ export async function GET(request: NextRequest) {
 
     // Redirect to main page after successful authentication
     // Use NEXT_PUBLIC_SITE_URL for consistent URLs across environments
-    return Response.redirect(`${env.NEXT_PUBLIC_SITE_URL}/`);
+    return Response.redirect(`${process.env.NEXT_PUBLIC_SITE_URL}/`);
   } catch (error) {
     console.error("Error:", error);
     return Response.json({ error: "Failed to authenticate" }, { status: 500 });
