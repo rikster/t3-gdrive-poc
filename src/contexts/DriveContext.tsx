@@ -27,7 +27,7 @@ export interface DriveContextType {
   logout: () => void;
   currentService: string | null;
   activeServices: string[];
-  serviceAccounts: ServiceAccount[];
+  serviceAccounts: Record<string, ServiceAccount[]>;
   isAuthenticating: boolean;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -49,7 +49,7 @@ export const DriveContext = createContext<DriveContextType>({
   logout: () => undefined,
   currentService: null,
   activeServices: [],
-  serviceAccounts: [],
+  serviceAccounts: {},
   isAuthenticating: false,
   searchQuery: "",
   setSearchQuery: () => undefined,
@@ -70,7 +70,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   const [isClerkAuthenticated, setIsClerkAuthenticated] = useState(false);
   const [currentService, setCurrentService] = useState<string | null>(null);
   const [activeServices, setActiveServices] = useState<string[]>([]);
-  const [serviceAccounts, setServiceAccounts] = useState<ServiceAccount[]>([]);
+  const [serviceAccounts, setServiceAccounts] = useState<Record<string, ServiceAccount[]>>({});
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const {
     searchQuery,
@@ -255,14 +255,20 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         }
 
         if (data.serviceAccounts && Array.isArray(data.serviceAccounts)) {
+          // Transform array into Record<string, ServiceAccount[]>
+          const accountsByService = data.serviceAccounts.reduce<Record<string, ServiceAccount[]>>((acc, account) => {
+            if (!acc[account.service]) {
+              acc[account.service] = [];
+            }
+            acc[account.service].push(account);
+            return acc;
+          }, {});
+
           // Only update if the accounts have changed
-          const accountsChanged =
-            data.serviceAccounts.length !== serviceAccounts.length ||
-            JSON.stringify(data.serviceAccounts) !==
-              JSON.stringify(serviceAccounts);
+          const accountsChanged = JSON.stringify(accountsByService) !== JSON.stringify(serviceAccounts);
 
           if (accountsChanged) {
-            setServiceAccounts(data.serviceAccounts);
+            setServiceAccounts(accountsByService);
           }
         }
       } catch (error) {
@@ -343,9 +349,11 @@ export function DriveProvider({ children }: { children: ReactNode }) {
           prevServices.filter((service) => service !== serviceId),
         );
 
-        setServiceAccounts((prevAccounts) =>
-          prevAccounts.filter((account) => account.service !== serviceId),
-        );
+        setServiceAccounts((prevAccounts) => {
+          const newAccounts = { ...prevAccounts };
+          delete newAccounts[serviceId];
+          return newAccounts;
+        });
 
         if (currentService === serviceId) {
           setCurrentService(null);

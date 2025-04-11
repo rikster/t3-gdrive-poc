@@ -8,7 +8,6 @@ import type { DriveItem } from "~/types/drive";
 import type { ServiceAccount, ServiceType } from "~/types/services";
 import type { DriveItemRowProps } from "~/types/ui";
 
-type ServiceAccounts = Record<ServiceType, ServiceAccount[]>;
 
 export function DriveItemRow({
   item,
@@ -41,27 +40,21 @@ export function DriveItemRow({
     const serviceName = getServiceName(item.service);
     const service = item.service;
 
-    const serviceAccounts_ = serviceAccounts as ServiceAccounts;
-    if (!service || !serviceAccounts_[service]) {
+    if (!service || !(service in serviceAccounts)) {
       return serviceName;
     }
 
     // Get account from serviceAccounts
-    const accounts = serviceAccounts_[service] ?? [];
-    const account = accounts.find(
-      (a: ServiceAccount) => a.id === item.accountId
-    );
+    const accounts = (serviceAccounts[service as ServiceType] ?? []) as ServiceAccount[];
+    const account = accounts.find((a) => a.id === item.accountId);
 
-    // Find any account with an email
-    const anyAccountWithEmail = accounts.find(
-      (a: ServiceAccount) => a.email
-    );
-
+    // If we found the matching account, use its email
     if (account?.email) {
       return `${serviceName} - ${account.email}`;
     }
 
     // If no email found for this account but another account has one
+    const anyAccountWithEmail = accounts.find((a) => a.email);
     if (anyAccountWithEmail?.email) {
       return `${serviceName} - ${anyAccountWithEmail.email}`;
     }

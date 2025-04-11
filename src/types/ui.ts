@@ -19,12 +19,12 @@ import type { DriveItem } from "./drive";
  */
 export interface DriveItemRowProps {
   item: DriveItem;
-  serviceAccounts: Array<{
+  serviceAccounts: Record<string, Array<{
     id: string;
     service: string;
     name?: string;
     email?: string;
-  }>;
+  }>>;
   isRecursiveSearch: boolean;
   clearSearch: () => void;
   handleFolderClick: (folder: DriveItem) => void;

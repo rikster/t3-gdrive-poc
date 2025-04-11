@@ -5,9 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import { useDrive } from "~/contexts/DriveContext";
 import { useDriveItems } from "~/hooks/useDriveItems";
 import { useDriveNavigation } from "~/hooks/useDriveNavigation";
-
 import type { DriveItem } from "~/types/drive";
-import type { ServiceAccount } from "~/types/services";
 import type { DriveUIProps } from "~/types/ui";
 
 import { DriveBreadcrumb } from "./DriveBreadcrumb";
@@ -187,7 +185,7 @@ export function DriveUI({
               isLoading={isLoading || isAuthenticating || isSearching}
               error={error}
               onRetry={() => void fetchFiles(currentFolder)}
-              serviceAccounts={(serviceAccounts as unknown) as { [key: string]: ServiceAccount[] } ?? {}}
+              serviceAccounts={serviceAccounts}
               isRecursiveSearch={isRecursiveSearch}
               clearSearch={() => {
                 clearSearch();

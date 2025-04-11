@@ -113,6 +113,8 @@ describe("DriveTable", () => {
 
     expect(screen.getByText("Document.pdf")).toBeInTheDocument();
     expect(screen.getByText("Images")).toBeInTheDocument();
+    expect(screen.getByText("Google Drive - user@gmail.com")).toBeInTheDocument();
+    expect(screen.getByText("Dropbox - user@example.com")).toBeInTheDocument();
   });
 
   // Test folder click
